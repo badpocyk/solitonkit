@@ -17,6 +17,7 @@
 #include "solitonkit/core/Lattice2D.hpp"
 #include "solitonkit/core/Vec3.hpp"
 #include "solitonkit/core/O3Field.hpp"
+#include "solitonkit/dynamics/LandauLifshitzDynamics.hpp"
 #include "solitonkit/flows/BabySkyrmeGradientFlow.hpp"
 #include "solitonkit/flows/GradientFlow.hpp"
 #include "solitonkit/initializers/SkyrmionAnsatz.hpp"
@@ -599,6 +600,47 @@ namespace solitonkit_binding {
         return std::make_tuple(field, records);
     }
 
+    std::vector<solitonkit::DynamicsRecord> run_landau_lifshitz_inplace(
+        solitonkit::O3Field& field,
+        double kappa,
+        double mass,
+        double time_step,
+        double damping,
+        std::size_t steps,
+        std::size_t record_every
+    ) {
+        const solitonkit::BabySkyrmeModel model(kappa, mass);
+        const solitonkit::LandauLifshitzDynamics dynamics(time_step, damping);
+
+        return dynamics.run(field, model, steps, record_every);
+    }
+
+    std::tuple<solitonkit::O3Field, std::vector<solitonkit::DynamicsRecord>>
+        run_landau_lifshitz(
+            const solitonkit::O3Field& input,
+            double kappa,
+            double mass,
+            double time_step,
+            double damping,
+            std::size_t steps,
+            std::size_t record_every
+        ) {
+        solitonkit::O3Field field = input;
+
+        std::vector<solitonkit::DynamicsRecord> records =
+            run_landau_lifshitz_inplace(
+                field,
+                kappa,
+                mass,
+                time_step,
+                damping,
+                steps,
+                record_every
+            );
+
+        return std::make_tuple(field, records);
+    }
+
     py::array_t<double> make_skyrmion_numpy(
         int width,
         int height,
@@ -754,6 +796,26 @@ PYBIND11_MODULE(_core, m) {
         .def("__repr__", [](const solitonkit::FlowRecord& record) {
         return "FlowRecord(step=" +
             std::to_string(record.step) +
+            ", energy=" +
+            std::to_string(record.energy) +
+            ", topological_charge=" +
+            std::to_string(record.topological_charge) +
+            ")";
+    });
+
+    py::class_<solitonkit::DynamicsRecord>(m, "DynamicsRecord")
+        .def_readwrite("step", &solitonkit::DynamicsRecord::step)
+        .def_readwrite("time", &solitonkit::DynamicsRecord::time)
+        .def_readwrite("energy", &solitonkit::DynamicsRecord::energy)
+        .def_readwrite(
+            "topological_charge",
+            &solitonkit::DynamicsRecord::topological_charge
+        )
+        .def("__repr__", [](const solitonkit::DynamicsRecord& record) {
+        return "DynamicsRecord(step=" +
+            std::to_string(record.step) +
+            ", time=" +
+            std::to_string(record.time) +
             ", energy=" +
             std::to_string(record.energy) +
             ", topological_charge=" +
@@ -1013,6 +1075,30 @@ PYBIND11_MODULE(_core, m) {
         py::arg("kappa") = 1.0,
         py::arg("mass") = 1.0,
         py::arg("step_size") = 1e-4,
+        py::arg("steps") = 1000,
+        py::arg("record_every") = 10
+    );
+
+    m.def(
+        "run_landau_lifshitz_inplace",
+        &run_landau_lifshitz_inplace,
+        py::arg("field"),
+        py::arg("kappa") = 1.0,
+        py::arg("mass") = 1.0,
+        py::arg("time_step") = 1e-5,
+        py::arg("damping") = 0.0,
+        py::arg("steps") = 1000,
+        py::arg("record_every") = 10
+    );
+
+    m.def(
+        "run_landau_lifshitz",
+        &run_landau_lifshitz,
+        py::arg("field"),
+        py::arg("kappa") = 1.0,
+        py::arg("mass") = 1.0,
+        py::arg("time_step") = 1e-5,
+        py::arg("damping") = 0.0,
         py::arg("steps") = 1000,
         py::arg("record_every") = 10
     );

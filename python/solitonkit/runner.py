@@ -14,6 +14,7 @@ import numpy as np
 from .core import (
     O3Field,
     FlowRecord,
+    DynamicsRecord,
     make_skyrmion_field,
     field_to_numpy,
     energy_density,
@@ -103,6 +104,42 @@ def flow_records_to_numpy(records: Iterable[FlowRecord]) -> np.ndarray:
     ]
 
     return np.asarray(rows, dtype=float)
+
+
+def dynamics_record_to_dict(
+    record: DynamicsRecord,
+) -> dict[str, float | int]:
+    return {
+        "step": int(record.step),
+        "time": float(record.time),
+        "energy": float(record.energy),
+        "topological_charge": float(record.topological_charge),
+    }
+
+
+def save_dynamics_records_csv(
+    records: Iterable[DynamicsRecord],
+    path: str | Path,
+) -> Path:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    with path.open("w", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(
+            file,
+            fieldnames=[
+                "step",
+                "time",
+                "energy",
+                "topological_charge",
+            ],
+        )
+        writer.writeheader()
+
+        for record in records:
+            writer.writerow(dynamics_record_to_dict(record))
+
+    return path
 
 
 def create_initial_skyrmion(config: SimulationConfig) -> O3Field:
@@ -446,6 +483,8 @@ __all__ = [
     "flow_record_to_dict",
     "flow_records_to_dicts",
     "flow_records_to_numpy",
+    "dynamics_record_to_dict",
+    "save_dynamics_records_csv",
     "create_initial_skyrmion",
     "run_skyrmion_relaxation",
     "save_records_csv",

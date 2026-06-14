@@ -31,6 +31,7 @@ BACKEND = "cpp"
 Vec3 = _cpp.Vec3
 O3Field = _cpp.O3Field
 FlowRecord = _cpp.FlowRecord
+DynamicsRecord = _cpp.DynamicsRecord
 GradientFlow = _cpp.GradientFlow
 BoundaryCondition = _cpp.BoundaryCondition
 
@@ -209,6 +210,7 @@ def core_info() -> dict[str, Any]:
             "Vec3",
             "O3Field",
             "FlowRecord",
+            "DynamicsRecord",
             "GradientFlow",
             "BoundaryCondition",
         ],
@@ -717,6 +719,104 @@ def run_baby_skyrme_gradient_flow(
         int(record_every),
     )
 
+
+def run_landau_lifshitz_inplace(
+    field: Any,
+    kappa: float = 1.0,
+    mass: float = 1.0,
+    time_step: float = 1e-5,
+    damping: float = 0.0,
+    steps: int = 1000,
+    record_every: int = 10,
+) -> list[DynamicsRecord]:
+    """
+    Evolve a field in place with damped Landau-Lifshitz dynamics.
+
+    The C++ integrator uses a forward Euler step followed by normalization.
+    """
+
+    _validate_dynamics_parameters(
+        kappa,
+        mass,
+        time_step,
+        damping,
+        steps,
+        record_every,
+    )
+
+    return _cpp.run_landau_lifshitz_inplace(
+        _unwrap_field(field),
+        float(kappa),
+        float(mass),
+        float(time_step),
+        float(damping),
+        int(steps),
+        int(record_every),
+    )
+
+
+def run_landau_lifshitz(
+    field: Any,
+    kappa: float = 1.0,
+    mass: float = 1.0,
+    time_step: float = 1e-5,
+    damping: float = 0.0,
+    steps: int = 1000,
+    record_every: int = 10,
+) -> Tuple[O3Field, list[DynamicsRecord]]:
+    """
+    Return an evolved copy of a field and Landau-Lifshitz records.
+
+    Each record includes step, physical time, energy, and topological charge.
+    """
+
+    _validate_dynamics_parameters(
+        kappa,
+        mass,
+        time_step,
+        damping,
+        steps,
+        record_every,
+    )
+
+    return _cpp.run_landau_lifshitz(
+        _unwrap_field(field),
+        float(kappa),
+        float(mass),
+        float(time_step),
+        float(damping),
+        int(steps),
+        int(record_every),
+    )
+
+
+def _validate_dynamics_parameters(
+    kappa: float,
+    mass: float,
+    time_step: float,
+    damping: float,
+    steps: int,
+    record_every: int,
+) -> None:
+    if kappa < 0.0:
+        raise ValueError("kappa must be non-negative")
+
+    if mass < 0.0:
+        raise ValueError("mass must be non-negative")
+
+    if time_step <= 0.0:
+        raise ValueError("time_step must be positive")
+
+    if damping < 0.0:
+        raise ValueError("damping must be non-negative")
+
+    if steps < 0:
+        raise ValueError("steps must be non-negative")
+
+    if record_every <= 0:
+        raise ValueError("record_every must be positive")
+
+
 def openmp_enabled() -> bool:
     """
     Return True if the C++ backend was built with OpenMP.
@@ -749,6 +849,7 @@ __all__ = [
     "O3Field",
     "Field2D",
     "FlowRecord",
+    "DynamicsRecord",
     "GradientFlow",
     "BoundaryCondition",
     "require_cpp_core",
@@ -781,6 +882,8 @@ __all__ = [
     "baby_skyrme_energy_terms",
     "run_baby_skyrme_gradient_flow",
     "run_baby_skyrme_gradient_flow_inplace",
+    "run_landau_lifshitz",
+    "run_landau_lifshitz_inplace",
     "make_multi_skyrmion_field",
     "openmp_enabled",
     "openmp_max_threads",
