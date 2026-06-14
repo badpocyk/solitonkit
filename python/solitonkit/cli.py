@@ -9,11 +9,12 @@ from .core import (
     make_skyrmion_field,
     run_baby_skyrme_gradient_flow,
     run_gradient_flow,
+    run_landau_lifshitz,
     topological_charge,
     total_energy,
 )
 from .io import load_field_npz, save_field_npz
-from .runner import save_records_csv
+from .runner import save_dynamics_records_csv, save_records_csv
 from .viz import save_skyrmion_diagnostics, save_skyrmion_plot
 
 
@@ -34,6 +35,7 @@ def _command_generate(args: Namespace) -> int:
         dy=args.dy,
         radius=args.radius,
         charge=args.charge,
+        boundary=args.boundary,
     )
 
     output = save_field_npz(
@@ -43,6 +45,7 @@ def _command_generate(args: Namespace) -> int:
             "generator": "skyrmion",
             "radius": args.radius,
             "charge": args.charge,
+            "boundary": args.boundary,
         },
     )
 
@@ -128,10 +131,50 @@ def _command_plot(args: Namespace) -> int:
     return 0
 
 
+def _command_evolve(args: Namespace) -> int:
+    field, input_metadata = load_field_npz(
+        args.input,
+        return_metadata=True,
+    )
+
+    evolved, records = run_landau_lifshitz(
+        field,
+        kappa=args.kappa,
+        mass=args.mass,
+        time_step=args.time_step,
+        damping=args.damping,
+        steps=args.steps,
+        record_every=args.record_every,
+    )
+
+    metadata = dict(input_metadata)
+    metadata["dynamics"] = {
+        "model": "landau-lifshitz",
+        "kappa": args.kappa,
+        "mass": args.mass,
+        "time_step": args.time_step,
+        "damping": args.damping,
+        "steps": args.steps,
+        "record_every": args.record_every,
+    }
+
+    output = save_field_npz(evolved, args.output, metadata=metadata)
+
+    if args.records is not None:
+        save_dynamics_records_csv(records, args.records)
+
+    print(f"saved evolved field: {output}")
+    print(f"final time: {records[-1].time:.12g}")
+    print(f"final energy: {records[-1].energy:.12g}")
+    print(f"final topological charge: {records[-1].topological_charge:.12g}")
+
+    return 0
+
+
 def build_parser() -> ArgumentParser:
     parser = ArgumentParser(
         prog="solitonkit",
-        description="Generate, relax, and visualize O(3) soliton fields.",
+        description="Generate, relax, evolve, and visualize O(3) soliton fields.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -139,6 +182,11 @@ def build_parser() -> ArgumentParser:
     _add_grid_arguments(generate)
     generate.add_argument("--radius", type=float, default=4.0)
     generate.add_argument("--charge", type=int, default=1)
+    generate.add_argument(
+        "--boundary",
+        choices=("periodic", "fixed", "neumann"),
+        default="periodic",
+    )
     generate.add_argument("--output", type=Path, required=True)
     generate.set_defaults(handler=_command_generate)
 
@@ -157,6 +205,21 @@ def build_parser() -> ArgumentParser:
     relax.add_argument("--steps", type=int, default=1000)
     relax.add_argument("--record-every", type=int, default=10)
     relax.set_defaults(handler=_command_relax)
+
+    evolve = subparsers.add_parser(
+        "evolve",
+        help="evolve a saved field with Landau-Lifshitz dynamics",
+    )
+    evolve.add_argument("--input", type=Path, required=True)
+    evolve.add_argument("--output", type=Path, required=True)
+    evolve.add_argument("--records", type=Path)
+    evolve.add_argument("--kappa", type=float, default=1.0)
+    evolve.add_argument("--mass", type=float, default=1.0)
+    evolve.add_argument("--time-step", type=float, default=1e-5)
+    evolve.add_argument("--damping", type=float, default=0.0)
+    evolve.add_argument("--steps", type=int, default=1000)
+    evolve.add_argument("--record-every", type=int, default=10)
+    evolve.set_defaults(handler=_command_evolve)
 
     plot = subparsers.add_parser("plot", help="plot a saved field")
     plot.add_argument("--input", type=Path, required=True)

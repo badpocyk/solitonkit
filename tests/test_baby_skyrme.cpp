@@ -49,6 +49,21 @@ int main() {
         assert(std::abs(field.at_index(k).norm() - 1.0) < 1e-12);
     }
 
+    Lattice2D fixed_lat{
+        16,
+        16,
+        0.5,
+        0.5,
+        BoundaryCondition::Fixed
+    };
+    O3Field fixed = SkyrmionAnsatz::charge_one(fixed_lat, 2.0);
+    const Vec3 fixed_before = fixed(0, 8);
+    flow.step(fixed, model);
+
+    assert(std::abs(fixed(0, 8).x - fixed_before.x) < 1e-12);
+    assert(std::abs(fixed(0, 8).y - fixed_before.y) < 1e-12);
+    assert(std::abs(fixed(0, 8).z - fixed_before.z) < 1e-12);
+
     std::cout << "BabySkyrmeModel and BabySkyrmeGradientFlow tests passed\n";
     std::cout << "Energy before = " << energy_before << "\n";
     std::cout << "Energy after  = " << energy_after << "\n";

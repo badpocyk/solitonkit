@@ -132,6 +132,10 @@ namespace solitonkit {
 
             for (std::size_t j = 0; j < lat.ny(); ++j) {
                 for (std::size_t i = 0; i < lat.nx(); ++i) {
+                    if (lat.is_fixed_boundary(i, j)) {
+                        continue;
+                    }
+
                     const Vec3 next = field(i, j)
                         + step_size_ * projected_direction_at(field, model, i, j);
 

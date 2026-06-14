@@ -32,8 +32,14 @@ class FlowSnapshot:
 def _copy_field(field: Any) -> O3Field:
     dx = float(getattr(field, "dx", getattr(field, "spacing", 1.0)))
     dy = float(getattr(field, "dy", getattr(field, "spacing", dx)))
+    boundary = str(getattr(field, "boundary", "periodic"))
 
-    return field_from_numpy(ensure_field(field), dx=dx, dy=dy)
+    return field_from_numpy(
+        ensure_field(field),
+        dx=dx,
+        dy=dy,
+        boundary=boundary,
+    )
 
 
 def run_baby_skyrme_gradient_flow_snapshots(

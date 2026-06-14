@@ -14,6 +14,7 @@ import numpy as np
 from .core import (
     O3Field,
     FlowRecord,
+    DynamicsRecord,
     make_skyrmion_field,
     field_to_numpy,
     energy_density,
@@ -39,6 +40,7 @@ class SimulationConfig:
 
     radius: float = 4.0
     charge: int = 1
+    boundary: str = "periodic"
 
     step_size: float = 0.001
     steps: int = 100
@@ -104,6 +106,42 @@ def flow_records_to_numpy(records: Iterable[FlowRecord]) -> np.ndarray:
     return np.asarray(rows, dtype=float)
 
 
+def dynamics_record_to_dict(
+    record: DynamicsRecord,
+) -> dict[str, float | int]:
+    return {
+        "step": int(record.step),
+        "time": float(record.time),
+        "energy": float(record.energy),
+        "topological_charge": float(record.topological_charge),
+    }
+
+
+def save_dynamics_records_csv(
+    records: Iterable[DynamicsRecord],
+    path: str | Path,
+) -> Path:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    with path.open("w", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(
+            file,
+            fieldnames=[
+                "step",
+                "time",
+                "energy",
+                "topological_charge",
+            ],
+        )
+        writer.writeheader()
+
+        for record in records:
+            writer.writerow(dynamics_record_to_dict(record))
+
+    return path
+
+
 def create_initial_skyrmion(config: SimulationConfig) -> O3Field:
     return make_skyrmion_field(
         config.nx,
@@ -113,6 +151,7 @@ def create_initial_skyrmion(config: SimulationConfig) -> O3Field:
         charge=config.charge,
         dx=config.dx,
         dy=config.dy,
+        boundary=config.boundary,
     )
 
 
@@ -231,6 +270,7 @@ def save_config_json(config: SimulationConfig, path: str | Path) -> Path:
         "dy": config.dy,
         "radius": config.radius,
         "charge": config.charge,
+        "boundary": config.boundary,
         "step_size": config.step_size,
         "steps": config.steps,
         "record_every": config.record_every,
@@ -264,6 +304,7 @@ def save_summary_txt(result: SimulationResult, path: str | Path) -> Path:
             f"dy = {result.config.effective_dy()}",
             f"radius = {result.config.radius}",
             f"charge = {result.config.charge}",
+            f"boundary = {result.config.boundary}",
             f"step_size = {result.config.step_size}",
             f"steps = {result.config.steps}",
             f"record_every = {result.config.record_every}",
@@ -442,6 +483,8 @@ __all__ = [
     "flow_record_to_dict",
     "flow_records_to_dicts",
     "flow_records_to_numpy",
+    "dynamics_record_to_dict",
+    "save_dynamics_records_csv",
     "create_initial_skyrmion",
     "run_skyrmion_relaxation",
     "save_records_csv",

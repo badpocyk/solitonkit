@@ -26,7 +26,9 @@ from .core import (
     O3Field,
     Field2D,
     FlowRecord,
+    DynamicsRecord,
     GradientFlow,
+    BoundaryCondition,
     require_cpp_core,
     core_info,
     backend_name,
@@ -56,6 +58,8 @@ from .core import (
     baby_skyrme_energy_terms,
     run_baby_skyrme_gradient_flow,
     run_baby_skyrme_gradient_flow_inplace,
+    run_landau_lifshitz,
+    run_landau_lifshitz_inplace,
     openmp_enabled,
     openmp_max_threads,
 )
@@ -81,6 +85,8 @@ from .runner import (
     flow_record_to_dict,
     flow_records_to_dicts,
     flow_records_to_numpy,
+    dynamics_record_to_dict,
+    save_dynamics_records_csv,
     print_records,
 )
 
@@ -125,6 +131,8 @@ from .datasets import (
 
 from .io import (
     FIELD_FORMAT_VERSION,
+    SUPPORTED_FIELD_FORMAT_VERSIONS,
+    BOUNDARY_CONDITIONS,
     save_field_npz,
     load_field_npz,
 )
@@ -153,7 +161,9 @@ __all__ = [
     "O3Field",
     "Field2D",
     "FlowRecord",
+    "DynamicsRecord",
     "GradientFlow",
+    "BoundaryCondition",
 
     # Core backend helpers
     "require_cpp_core",
@@ -190,6 +200,8 @@ __all__ = [
     "run_adaptive_gradient_flow",
     "run_baby_skyrme_gradient_flow",
     "run_baby_skyrme_gradient_flow_inplace",
+    "run_landau_lifshitz",
+    "run_landau_lifshitz_inplace",
 
     # Runner
     "SimulationConfig",
@@ -203,6 +215,8 @@ __all__ = [
     "flow_record_to_dict",
     "flow_records_to_dicts",
     "flow_records_to_numpy",
+    "dynamics_record_to_dict",
+    "save_dynamics_records_csv",
     "print_records",
 
     # Visualization
@@ -225,6 +239,8 @@ __all__ = [
 
     # Field I/O
     "FIELD_FORMAT_VERSION",
+    "SUPPORTED_FIELD_FORMAT_VERSIONS",
+    "BOUNDARY_CONDITIONS",
     "save_field_npz",
     "load_field_npz",
 
