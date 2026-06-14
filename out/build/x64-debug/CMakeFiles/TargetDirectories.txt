@@ -1,0 +1,13 @@
+C:/Users/rjhce/Desktop/solitonkit/solitonkit/out/build/x64-debug/CMakeFiles/test_baby_skyrme.dir
+C:/Users/rjhce/Desktop/solitonkit/solitonkit/out/build/x64-debug/CMakeFiles/test_csv_writer.dir
+C:/Users/rjhce/Desktop/solitonkit/solitonkit/out/build/x64-debug/CMakeFiles/test_gradient_flow.dir
+C:/Users/rjhce/Desktop/solitonkit/solitonkit/out/build/x64-debug/CMakeFiles/test_lattice2d.dir
+C:/Users/rjhce/Desktop/solitonkit/solitonkit/out/build/x64-debug/CMakeFiles/test_o3field.dir
+C:/Users/rjhce/Desktop/solitonkit/solitonkit/out/build/x64-debug/CMakeFiles/test_o3sigma.dir
+C:/Users/rjhce/Desktop/solitonkit/solitonkit/out/build/x64-debug/CMakeFiles/test_skyrmion_ansatz.dir
+C:/Users/rjhce/Desktop/solitonkit/solitonkit/out/build/x64-debug/CMakeFiles/test_topological_charge.dir
+C:/Users/rjhce/Desktop/solitonkit/solitonkit/out/build/x64-debug/CMakeFiles/test_vec3.dir
+C:/Users/rjhce/Desktop/solitonkit/solitonkit/out/build/x64-debug/CMakeFiles/_core.dir
+C:/Users/rjhce/Desktop/solitonkit/solitonkit/out/build/x64-debug/CMakeFiles/test.dir
+C:/Users/rjhce/Desktop/solitonkit/solitonkit/out/build/x64-debug/CMakeFiles/edit_cache.dir
+C:/Users/rjhce/Desktop/solitonkit/solitonkit/out/build/x64-debug/CMakeFiles/rebuild_cache.dir

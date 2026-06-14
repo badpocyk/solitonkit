@@ -1,0 +1,12 @@
+pyproject.toml
+python/solitonkit/__init__.py
+python/solitonkit/adaptive.py
+python/solitonkit/core.py
+python/solitonkit/datasets.py
+python/solitonkit/runner.py
+python/solitonkit/viz.py
+python/solitonkit.egg-info/PKG-INFO
+python/solitonkit.egg-info/SOURCES.txt
+python/solitonkit.egg-info/dependency_links.txt
+python/solitonkit.egg-info/requires.txt
+python/solitonkit.egg-info/top_level.txt

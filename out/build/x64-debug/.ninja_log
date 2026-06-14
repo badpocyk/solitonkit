@@ -1,0 +1,23 @@
+# ninja log v7
+248	6662	8031695504203931	CMakeFiles/_core.dir/python/bindings.cpp.obj	e6b43b60e4ceddc8
+233	1384	8031695504053050	CMakeFiles/test_vec3.dir/tests/test_vec3.cpp.obj	6d0df2e013847f18
+153	1348	8031695503251657	CMakeFiles/test_lattice2d.dir/tests/test_lattice2d.cpp.obj	b2fd3b51af4487ec
+186	1565	8031695503558484	CMakeFiles/test_o3sigma.dir/tests/test_o3sigma.cpp.obj	ba51b1ec4d0eb90c
+172	1476	8031695503422850	CMakeFiles/test_o3field.dir/tests/test_o3field.cpp.obj	dc3783e3a50e46bc
+202	1762	8031695503728717	CMakeFiles/test_skyrmion_ansatz.dir/tests/test_skyrmion_ansatz.cpp.obj	99d91382928551df
+216	1534	8031695503857499	CMakeFiles/test_topological_charge.dir/tests/test_topological_charge.cpp.obj	91494d3a6b979f47
+144	1657	8031695503141213	CMakeFiles/test_gradient_flow.dir/tests/test_gradient_flow.cpp.obj	1982d99800916830
+50	1001	8031696559841836	C:/Users/rjhce/Desktop/solitonkit/solitonkit/python/solitonkit/_core.cp314-win_amd64.pyd	3c9725e24c4df158
+106	558	8031706348291698	test_lattice2d.exe	cf6e76289ff25f11
+176	628	8031706348990112	test_vec3.exe	af7d21f25a7f8dce
+134	558	8031706348567260	test_o3sigma.exe	f0dfebddd801b7ff
+119	557	8031706348428020	test_o3field.exe	3dffe013ca499879
+148	602	8031706348683455	test_skyrmion_ansatz.exe	c759f78a7e5da355
+162	610	8031706348849755	test_topological_charge.exe	657b2b9d013a312d
+89	551	8031706348125332	test_gradient_flow.exe	28990835f7089667
+135	2824	8031695503073613	CMakeFiles/test_csv_writer.dir/tests/test_csv_writer.cpp.obj	bf8017ec92cee123
+63	549	8031706347875275	test_csv_writer.exe	dc2d19ad72bc864c
+122	1913	8031695502934056	CMakeFiles/test_baby_skyrme.dir/tests/test_baby_skyrme.cpp.obj	bd0f44b357ae1b1b
+36	551	8031706347585260	test_baby_skyrme.exe	6a3344b208a19259
+14	4301	8031707849380539	CMakeFiles/_core.dir/python/bindings.cpp.obj	e6b43b60e4ceddc8
+76	717	8031708666242040	C:/Users/rjhce/Desktop/solitonkit/solitonkit/python/solitonkit/_core.cp314-win_amd64.pyd	3c9725e24c4df158

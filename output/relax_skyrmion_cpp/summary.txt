@@ -1,0 +1,16 @@
+solitonkit simulation summary
+
+nx = 64
+ny = 64
+dx = 0.2
+dy = 0.2
+radius = 4.0
+charge = 1
+step_size = 0.001
+steps = 20
+record_every = 5
+
+initial_energy = 83.53494545966169
+initial_topological_charge = -0.7817919684470612
+final_energy = 62.97951386477819
+final_topological_charge = -0.9004878160092098

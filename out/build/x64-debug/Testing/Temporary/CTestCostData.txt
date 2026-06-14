@@ -1,0 +1,11 @@
+test_baby_skyrme 6 0.00407732
+test_csv_writer 6 0.00509985
+test_gradient_flow 6 0.00284255
+test_lattice2d 6 0.00232812
+test_o3field 6 0.00175888
+test_o3sigma 6 0.00234112
+test_skyrmion_ansatz 6 0.00260127
+test_topological_charge 6 0.00226818
+test_vec3 6 0.00165918
+test_python_io_animation 2 0.898493
+---
