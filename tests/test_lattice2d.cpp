@@ -34,6 +34,31 @@ int main() {
     assert(lat.down(0) == 2);
     assert(lat.up(2) == 0);
 
+    assert(lat.boundary_condition() == BoundaryCondition::Periodic);
+    assert(lat.is_boundary(0, 0));
+    assert(lat.is_boundary(3, 2));
+    assert(!lat.is_boundary(1, 1));
+    assert(!lat.is_fixed_boundary(0, 0));
+
+    for (const auto condition : {
+        BoundaryCondition::Fixed,
+        BoundaryCondition::Neumann
+    }) {
+        Lattice2D non_periodic{ 4, 3, 0.5, 0.25, condition };
+
+        assert(non_periodic.left(0) == 0);
+        assert(non_periodic.right(3) == 3);
+        assert(non_periodic.down(0) == 0);
+        assert(non_periodic.up(2) == 2);
+
+        assert(non_periodic.index(4, 3) == 11);
+        assert(non_periodic.index_signed(-1, -1) == 0);
+    }
+
+    Lattice2D fixed{ 4, 3, 0.5, 0.25, BoundaryCondition::Fixed };
+    assert(fixed.is_fixed_boundary(0, 1));
+    assert(!fixed.is_fixed_boundary(1, 1));
+
     std::cout << "Lattice2D tests passed successfully\n";
 
     return 0;

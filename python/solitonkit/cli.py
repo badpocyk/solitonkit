@@ -34,6 +34,7 @@ def _command_generate(args: Namespace) -> int:
         dy=args.dy,
         radius=args.radius,
         charge=args.charge,
+        boundary=args.boundary,
     )
 
     output = save_field_npz(
@@ -43,6 +44,7 @@ def _command_generate(args: Namespace) -> int:
             "generator": "skyrmion",
             "radius": args.radius,
             "charge": args.charge,
+            "boundary": args.boundary,
         },
     )
 
@@ -139,6 +141,11 @@ def build_parser() -> ArgumentParser:
     _add_grid_arguments(generate)
     generate.add_argument("--radius", type=float, default=4.0)
     generate.add_argument("--charge", type=int, default=1)
+    generate.add_argument(
+        "--boundary",
+        choices=("periodic", "fixed", "neumann"),
+        default="periodic",
+    )
     generate.add_argument("--output", type=Path, required=True)
     generate.set_defaults(handler=_command_generate)
 

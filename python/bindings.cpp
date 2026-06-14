@@ -29,6 +29,41 @@ namespace solitonkit_binding {
 
     constexpr double PI = 3.141592653589793238462643383279502884;
 
+    solitonkit::BoundaryCondition parse_boundary_condition(
+        const std::string& boundary
+    ) {
+        if (boundary == "periodic") {
+            return solitonkit::BoundaryCondition::Periodic;
+        }
+
+        if (boundary == "fixed") {
+            return solitonkit::BoundaryCondition::Fixed;
+        }
+
+        if (boundary == "neumann") {
+            return solitonkit::BoundaryCondition::Neumann;
+        }
+
+        throw std::invalid_argument(
+            "boundary must be 'periodic', 'fixed', or 'neumann'"
+        );
+    }
+
+    std::string boundary_condition_name(
+        solitonkit::BoundaryCondition boundary
+    ) {
+        switch (boundary) {
+        case solitonkit::BoundaryCondition::Periodic:
+            return "periodic";
+        case solitonkit::BoundaryCondition::Fixed:
+            return "fixed";
+        case solitonkit::BoundaryCondition::Neumann:
+            return "neumann";
+        }
+
+        throw std::runtime_error("unknown boundary condition");
+    }
+
     double sk_dot(const solitonkit::Vec3& a, const solitonkit::Vec3& b) {
         return a.x * b.x + a.y * b.y + a.z * b.z;
     }
@@ -38,14 +73,6 @@ namespace solitonkit_binding {
             a.y * b.z - a.z * b.y,
             a.z * b.x - a.x * b.z,
             a.x * b.y - a.y * b.x
-        };
-    }
-
-    solitonkit::Vec3 sk_add(const solitonkit::Vec3& a, const solitonkit::Vec3& b) {
-        return solitonkit::Vec3{
-            a.x + b.x,
-            a.y + b.y,
-            a.z + b.z
         };
     }
 
@@ -87,9 +114,11 @@ namespace solitonkit_binding {
         std::size_t nx,
         std::size_t ny,
         double dx,
-        double dy
+        double dy,
+        solitonkit::BoundaryCondition boundary =
+            solitonkit::BoundaryCondition::Periodic
     ) {
-        solitonkit::Lattice2D lattice(nx, ny, dx, dy);
+        solitonkit::Lattice2D lattice(nx, ny, dx, dy, boundary);
         solitonkit::O3Field field(lattice);
 
         return field;
@@ -102,9 +131,11 @@ namespace solitonkit_binding {
         double dy,
         double x,
         double y,
-        double z
+        double z,
+        solitonkit::BoundaryCondition boundary =
+            solitonkit::BoundaryCondition::Periodic
     ) {
-        solitonkit::O3Field field = make_empty_field(nx, ny, dx, dy);
+        solitonkit::O3Field field = make_empty_field(nx, ny, dx, dy, boundary);
 
         const solitonkit::Vec3 value = sk_normalized(
             solitonkit::Vec3{ x, y, z }
@@ -125,7 +156,9 @@ namespace solitonkit_binding {
         double dx,
         double dy,
         double radius,
-        int charge
+        int charge,
+        solitonkit::BoundaryCondition boundary =
+            solitonkit::BoundaryCondition::Periodic
     ) {
         if (radius <= 0.0) {
             throw std::invalid_argument("radius must be positive");
@@ -135,7 +168,7 @@ namespace solitonkit_binding {
             throw std::invalid_argument("charge must be non-zero");
         }
 
-        solitonkit::O3Field field = make_empty_field(nx, ny, dx, dy);
+        solitonkit::O3Field field = make_empty_field(nx, ny, dx, dy, boundary);
 
         const double cx = 0.5 * static_cast<double>(nx - 1);
         const double cy = 0.5 * static_cast<double>(ny - 1);
@@ -174,7 +207,9 @@ namespace solitonkit_binding {
         double radius,
         double center_x,
         double center_y,
-        int charge
+        int charge,
+        solitonkit::BoundaryCondition boundary =
+            solitonkit::BoundaryCondition::Periodic
     ) {
         if (radius <= 0.0) {
             throw std::invalid_argument("radius must be positive");
@@ -184,7 +219,7 @@ namespace solitonkit_binding {
             throw std::invalid_argument("charge must be non-zero");
         }
 
-        solitonkit::O3Field field = make_empty_field(nx, ny, dx, dy);
+        solitonkit::O3Field field = make_empty_field(nx, ny, dx, dy, boundary);
 
         constexpr double eps = 1e-12;
 
@@ -217,9 +252,11 @@ namespace solitonkit_binding {
         std::size_t ny,
         double dx,
         double dy,
-        const std::vector<solitonkit::SkyrmionSpec>& specs
+        const std::vector<solitonkit::SkyrmionSpec>& specs,
+        solitonkit::BoundaryCondition boundary =
+            solitonkit::BoundaryCondition::Periodic
     ) {
-        solitonkit::Lattice2D lattice(nx, ny, dx, dy);
+        solitonkit::Lattice2D lattice(nx, ny, dx, dy, boundary);
 
         return solitonkit::SkyrmionAnsatz::multi_skyrmion(
             lattice,
@@ -271,7 +308,8 @@ namespace solitonkit_binding {
     solitonkit::O3Field field_from_numpy(
         py::array_t<double, py::array::c_style | py::array::forcecast> array,
         double dx,
-        double dy
+        double dy,
+        const std::string& boundary
     ) {
         const py::buffer_info info = array.request();
 
@@ -286,7 +324,13 @@ namespace solitonkit_binding {
         const std::size_t ny = static_cast<std::size_t>(info.shape[0]);
         const std::size_t nx = static_cast<std::size_t>(info.shape[1]);
 
-        solitonkit::O3Field field = make_empty_field(nx, ny, dx, dy);
+        solitonkit::O3Field field = make_empty_field(
+            nx,
+            ny,
+            dx,
+            dy,
+            parse_boundary_condition(boundary)
+        );
 
         auto data = array.unchecked<3>();
 
@@ -486,40 +530,8 @@ namespace solitonkit_binding {
         std::vector<solitonkit::FlowRecord> records;
         records.push_back(make_record(field, 0));
 
-        const auto& lattice = field.lattice();
-
-        const std::size_t nx = lattice.nx();
-        const std::size_t ny = lattice.ny();
-        const double dx = lattice.dx();
-        const double dy = lattice.dy();
-
         for (std::size_t step = 1; step <= steps; ++step) {
-            solitonkit::O3Field next = make_empty_field(nx, ny, dx, dy);
-
-            for (std::size_t j = 0; j < ny; ++j) {
-                for (std::size_t i = 0; i < nx; ++i) {
-                    const solitonkit::Vec3& n = field(i, j);
-
-                    const solitonkit::Vec3 lap =
-                        solitonkit::GradientFlow::laplacian_at(field, i, j);
-
-                    const double normal_component = sk_dot(n, lap);
-
-                    const solitonkit::Vec3 tangent_part = sk_sub(
-                        lap,
-                        sk_mul(n, normal_component)
-                    );
-
-                    const solitonkit::Vec3 updated = sk_add(
-                        n,
-                        sk_mul(tangent_part, flow.step_size())
-                    );
-
-                    next(i, j) = sk_normalized(updated);
-                }
-            }
-
-            field = next;
+            flow.step(field);
 
             if (step % record_every == 0 || step == steps) {
                 records.push_back(make_record(field, step));
@@ -602,7 +614,8 @@ namespace solitonkit_binding {
             1.0,
             1.0,
             radius,
-            1
+            1,
+            solitonkit::BoundaryCondition::Periodic
         );
 
         return field_to_numpy(field);
@@ -627,7 +640,8 @@ namespace solitonkit_binding {
             radius,
             center_x,
             center_y,
-            1
+            1,
+            solitonkit::BoundaryCondition::Periodic
         );
 
         return field_to_numpy(field);
@@ -640,6 +654,11 @@ PYBIND11_MODULE(_core, m) {
     using namespace solitonkit_binding;
 
     m.doc() = "C++ backend for solitonkit";
+
+    py::enum_<solitonkit::BoundaryCondition>(m, "BoundaryCondition")
+        .value("Periodic", solitonkit::BoundaryCondition::Periodic)
+        .value("Fixed", solitonkit::BoundaryCondition::Fixed)
+        .value("Neumann", solitonkit::BoundaryCondition::Neumann);
 
     py::class_<solitonkit::Vec3>(m, "Vec3")
         .def(py::init<>())
@@ -668,14 +687,22 @@ PYBIND11_MODULE(_core, m) {
             std::size_t nx,
             std::size_t ny,
             double dx,
-            double dy
+            double dy,
+            const std::string& boundary
             ) {
-        return make_empty_field(nx, ny, dx, dy);
+        return make_empty_field(
+            nx,
+            ny,
+            dx,
+            dy,
+            parse_boundary_condition(boundary)
+        );
     }),
             py::arg("nx"),
             py::arg("ny"),
             py::arg("dx") = 1.0,
-            py::arg("dy") = 1.0
+            py::arg("dy") = 1.0,
+            py::arg("boundary") = "periodic"
         )
         .def_property_readonly("nx", [](const solitonkit::O3Field& field) {
         return field.lattice().nx();
@@ -691,6 +718,9 @@ PYBIND11_MODULE(_core, m) {
     })
         .def_property_readonly("spacing", [](const solitonkit::O3Field& field) {
         return field.lattice().dx();
+    })
+        .def_property_readonly("boundary", [](const solitonkit::O3Field& field) {
+        return boundary_condition_name(field.lattice().boundary_condition());
     })
         .def("get", [](const solitonkit::O3Field& field, std::size_t i, std::size_t j) {
         return field(i, j);
@@ -708,6 +738,9 @@ PYBIND11_MODULE(_core, m) {
             std::to_string(field.lattice().dx()) +
             ", dy=" +
             std::to_string(field.lattice().dy()) +
+            ", boundary='" +
+            boundary_condition_name(field.lattice().boundary_condition()) +
+            "'" +
             ")";
     });
 
@@ -769,25 +802,65 @@ PYBIND11_MODULE(_core, m) {
 
     m.def(
         "make_uniform_field",
-        &make_uniform_field,
+        [](
+            std::size_t nx,
+            std::size_t ny,
+            double dx,
+            double dy,
+            double x,
+            double y,
+            double z,
+            const std::string& boundary
+            ) {
+        return make_uniform_field(
+            nx,
+            ny,
+            dx,
+            dy,
+            x,
+            y,
+            z,
+            parse_boundary_condition(boundary)
+        );
+    },
         py::arg("nx"),
         py::arg("ny"),
         py::arg("dx") = 1.0,
         py::arg("dy") = 1.0,
         py::arg("x") = 0.0,
         py::arg("y") = 0.0,
-        py::arg("z") = 1.0
+        py::arg("z") = 1.0,
+        py::arg("boundary") = "periodic"
     );
 
     m.def(
         "make_skyrmion_field",
-        &make_skyrmion_field,
+        [](
+            std::size_t nx,
+            std::size_t ny,
+            double dx,
+            double dy,
+            double radius,
+            int charge,
+            const std::string& boundary
+            ) {
+        return make_skyrmion_field(
+            nx,
+            ny,
+            dx,
+            dy,
+            radius,
+            charge,
+            parse_boundary_condition(boundary)
+        );
+    },
         py::arg("nx"),
         py::arg("ny"),
         py::arg("dx") = 1.0,
         py::arg("dy") = 1.0,
         py::arg("radius") = 20.0,
-        py::arg("charge") = 1
+        py::arg("charge") = 1,
+        py::arg("boundary") = "periodic"
     );
 
     m.def(
@@ -797,21 +870,24 @@ PYBIND11_MODULE(_core, m) {
             std::size_t ny,
             const std::vector<solitonkit::SkyrmionSpec>& specs,
             double dx,
-            double dy
+            double dy,
+            const std::string& boundary
             ) {
         return make_multi_skyrmion_field(
             nx,
             ny,
-            dx,
-            dy,
-            specs
+                dx,
+                dy,
+                specs,
+                parse_boundary_condition(boundary)
         );
     },
         py::arg("nx"),
         py::arg("ny"),
         py::arg("specs"),
         py::arg("dx") = 1.0,
-        py::arg("dy") = 1.0
+        py::arg("dy") = 1.0,
+        py::arg("boundary") = "periodic"
     );
 
     m.def(
@@ -843,7 +919,8 @@ PYBIND11_MODULE(_core, m) {
         &field_from_numpy,
         py::arg("array"),
         py::arg("dx") = 1.0,
-        py::arg("dy") = 1.0
+        py::arg("dy") = 1.0,
+        py::arg("boundary") = "periodic"
     );
 
     m.def(

@@ -99,6 +99,10 @@ namespace solitonkit {
 
             for (std::size_t j = 0; j < lat.ny(); ++j) {
                 for (std::size_t i = 0; i < lat.nx(); ++i) {
+                    if (lat.is_fixed_boundary(i, j)) {
+                        continue;
+                    }
+
                     const Vec3 phi = field(i, j);
                     const Vec3 direction = projected_laplacian_at(field, i, j);
 

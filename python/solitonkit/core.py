@@ -32,6 +32,7 @@ Vec3 = _cpp.Vec3
 O3Field = _cpp.O3Field
 FlowRecord = _cpp.FlowRecord
 GradientFlow = _cpp.GradientFlow
+BoundaryCondition = _cpp.BoundaryCondition
 
 
 # ---------------------------------------------------------------------
@@ -58,6 +59,7 @@ class SkyrmionConfig:
     dx: Optional[float] = None
     dy: Optional[float] = None
     charge: int = 1
+    boundary: str = "periodic"
 
     @property
     def nx(self) -> int:
@@ -100,6 +102,7 @@ class Field2D:
         spacing: float = 1.0,
         dx: Optional[float] = None,
         dy: Optional[float] = None,
+        boundary: str = "periodic",
     ) -> None:
         if dx is None:
             dx = spacing
@@ -107,7 +110,7 @@ class Field2D:
         if dy is None:
             dy = spacing
 
-        self._field = _cpp.O3Field(width, height, dx, dy)
+        self._field = _cpp.O3Field(width, height, dx, dy, boundary)
 
     @classmethod
     def from_cpp(cls, field: O3Field) -> "Field2D":
@@ -147,6 +150,10 @@ class Field2D:
     def spacing(self) -> float:
         return float(self._field.spacing)
 
+    @property
+    def boundary(self) -> str:
+        return str(self._field.boundary)
+
     def get(self, x: int, y: int) -> Vec3:
         return self._field.get(x, y)
 
@@ -162,7 +169,8 @@ class Field2D:
             f"width={self.width}, "
             f"height={self.height}, "
             f"dx={self.dx}, "
-            f"dy={self.dy}"
+            f"dy={self.dy}, "
+            f"boundary={self.boundary!r}"
             ")"
         )
 
@@ -202,6 +210,7 @@ def core_info() -> dict[str, Any]:
             "O3Field",
             "FlowRecord",
             "GradientFlow",
+            "BoundaryCondition",
         ],
     }
 
@@ -232,6 +241,7 @@ def make_field2d(
     *,
     dx: Optional[float] = None,
     dy: Optional[float] = None,
+    boundary: str = "periodic",
 ) -> Field2D:
     return Field2D(
         width=width,
@@ -239,6 +249,7 @@ def make_field2d(
         spacing=spacing,
         dx=dx,
         dy=dy,
+        boundary=boundary,
     )
 
 
@@ -252,6 +263,7 @@ def make_uniform_field(
     *,
     dx: Optional[float] = None,
     dy: Optional[float] = None,
+    boundary: str = "periodic",
 ) -> O3Field:
     if dx is None:
         dx = spacing
@@ -259,7 +271,7 @@ def make_uniform_field(
     if dy is None:
         dy = spacing
 
-    return _cpp.make_uniform_field(nx, ny, dx, dy, x, y, z)
+    return _cpp.make_uniform_field(nx, ny, dx, dy, x, y, z, boundary)
 
 
 def make_skyrmion_field(
@@ -271,9 +283,13 @@ def make_skyrmion_field(
     *,
     dx: Optional[float] = None,
     dy: Optional[float] = None,
+    boundary: str = "periodic",
 ) -> O3Field:
     """
     Create a skyrmion as a real C++ O3Field.
+
+    boundary may be "periodic", "fixed", or "neumann". Fixed boundaries
+    retain their initial edge values during gradient flow.
     """
 
     if dx is None:
@@ -289,6 +305,7 @@ def make_skyrmion_field(
         dy,
         radius,
         charge,
+        boundary,
     )
 
 
@@ -299,6 +316,7 @@ def make_skyrmion_field_xy(
     dy: float,
     radius: float = 20.0,
     charge: int = 1,
+    boundary: str = "periodic",
 ) -> O3Field:
     return _cpp.make_skyrmion_field(
         nx,
@@ -307,6 +325,7 @@ def make_skyrmion_field_xy(
         dy,
         radius,
         charge,
+        boundary,
     )
 
 
@@ -371,6 +390,7 @@ def make_skyrmion_from_config(
             charge=config.charge,
             dx=config.dx,
             dy=config.dy,
+            boundary=config.boundary,
         )
 
     if config.center_x is None and config.center_y is None:
@@ -399,6 +419,7 @@ def field_from_numpy(
     *,
     dx: Optional[float] = None,
     dy: Optional[float] = None,
+    boundary: str = "periodic",
 ) -> O3Field:
     if dx is None:
         dx = spacing
@@ -406,7 +427,7 @@ def field_from_numpy(
     if dy is None:
         dy = spacing
 
-    return _cpp.field_from_numpy(array, dx, dy)
+    return _cpp.field_from_numpy(array, dx, dy, boundary)
 
 
 def field_to_numpy(field: Any) -> np.ndarray:
@@ -524,6 +545,7 @@ def make_multi_skyrmion_field(
     charges=None,
     scales=None,
     phases=None,
+    boundary="periodic",
 ):
     """
     Create an O(3) field containing multiple skyrmions / anti-skyrmions.
@@ -548,6 +570,9 @@ def make_multi_skyrmion_field(
 
     phases:
         List of internal phases / rotations.
+
+    boundary:
+        "periodic", "fixed", or "neumann".
     """
 
     if centers is None:
@@ -601,6 +626,7 @@ def make_multi_skyrmion_field(
         specs,
         dx=float(spacing),
         dy=float(spacing),
+        boundary=str(boundary),
     )
 
 def baby_skyrme_energy(field, kappa: float = 1.0, mass: float = 1.0) -> float:
@@ -724,6 +750,7 @@ __all__ = [
     "Field2D",
     "FlowRecord",
     "GradientFlow",
+    "BoundaryCondition",
     "require_cpp_core",
     "core_info",
     "backend_name",

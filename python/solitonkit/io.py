@@ -10,7 +10,9 @@ import numpy as np
 from .core import O3Field, field_from_numpy
 
 
-FIELD_FORMAT_VERSION = 1
+FIELD_FORMAT_VERSION = 2
+SUPPORTED_FIELD_FORMAT_VERSIONS = {1, FIELD_FORMAT_VERSION}
+BOUNDARY_CONDITIONS = {"periodic", "fixed", "neumann"}
 
 
 def _field_spacing(
@@ -50,6 +52,7 @@ def save_field_npz(
     dy: Optional[float] = None,
     metadata: Optional[Mapping[str, Any]] = None,
     compressed: bool = True,
+    boundary: Optional[str] = None,
 ) -> Path:
     """
     Save an O(3) field, lattice spacing, and JSON metadata to an NPZ file.
@@ -60,6 +63,12 @@ def save_field_npz(
 
     array = _field_array(field)
     dx, dy = _field_spacing(field, dx, dy)
+
+    if boundary is None:
+        boundary = str(getattr(field, "boundary", "periodic"))
+
+    if boundary not in BOUNDARY_CONDITIONS:
+        raise ValueError("boundary must be 'periodic', 'fixed', or 'neumann'")
 
     if not np.all(np.isfinite(array)):
         raise ValueError("field contains non-finite values")
@@ -76,6 +85,7 @@ def save_field_npz(
         field=array,
         dx=np.asarray(dx),
         dy=np.asarray(dy),
+        boundary=np.asarray(boundary),
         format_version=np.asarray(FIELD_FORMAT_VERSION),
         metadata_json=np.asarray(metadata_json),
     )
@@ -122,12 +132,17 @@ def load_field_npz(
 
         version = int(data["format_version"].item())
 
-        if version != FIELD_FORMAT_VERSION:
+        if version not in SUPPORTED_FIELD_FORMAT_VERSIONS:
             raise ValueError(f"unsupported field format version: {version}")
 
         array = np.asarray(data["field"], dtype=float)
         dx = float(data["dx"].item())
         dy = float(data["dy"].item())
+        boundary = (
+            str(data["boundary"].item())
+            if "boundary" in data.files
+            else "periodic"
+        )
         metadata_json = str(data["metadata_json"].item())
 
     if array.ndim != 3 or array.shape[2] != 3:
@@ -144,7 +159,7 @@ def load_field_npz(
     if not isinstance(metadata, dict):
         raise ValueError("saved metadata must be a JSON object")
 
-    field = field_from_numpy(array, dx=dx, dy=dy)
+    field = field_from_numpy(array, dx=dx, dy=dy, boundary=boundary)
 
     if return_metadata:
         return field, metadata
@@ -154,6 +169,8 @@ def load_field_npz(
 
 __all__ = [
     "FIELD_FORMAT_VERSION",
+    "SUPPORTED_FIELD_FORMAT_VERSIONS",
+    "BOUNDARY_CONDITIONS",
     "save_field_npz",
     "load_field_npz",
 ]

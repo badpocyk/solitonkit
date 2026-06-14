@@ -27,6 +27,7 @@ from .core import (
     Field2D,
     FlowRecord,
     GradientFlow,
+    BoundaryCondition,
     require_cpp_core,
     core_info,
     backend_name,
@@ -125,6 +126,8 @@ from .datasets import (
 
 from .io import (
     FIELD_FORMAT_VERSION,
+    SUPPORTED_FIELD_FORMAT_VERSIONS,
+    BOUNDARY_CONDITIONS,
     save_field_npz,
     load_field_npz,
 )
@@ -154,6 +157,7 @@ __all__ = [
     "Field2D",
     "FlowRecord",
     "GradientFlow",
+    "BoundaryCondition",
 
     # Core backend helpers
     "require_cpp_core",
@@ -225,6 +229,8 @@ __all__ = [
 
     # Field I/O
     "FIELD_FORMAT_VERSION",
+    "SUPPORTED_FIELD_FORMAT_VERSIONS",
+    "BOUNDARY_CONDITIONS",
     "save_field_npz",
     "load_field_npz",
 

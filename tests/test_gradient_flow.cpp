@@ -60,6 +60,36 @@ int main() {
         assert(std::abs(field.at_index(k).norm() - 1.0) < 1e-12);
     }
 
+    // Fixed boundaries stay pinned, while Neumann boundaries can evolve.
+    Lattice2D fixed_lat{
+        8,
+        8,
+        1.0,
+        1.0,
+        BoundaryCondition::Fixed
+    };
+    O3Field fixed = O3Field::uniform(fixed_lat, Vec3{ 0.0, 0.0, 1.0 });
+    fixed(0, 4) = Vec3{ 1.0, 0.0, 0.0 };
+    const Vec3 fixed_before = fixed(0, 4);
+    flow.step(fixed);
+
+    assert(std::abs(fixed(0, 4).x - fixed_before.x) < 1e-12);
+    assert(std::abs(fixed(0, 4).z - fixed_before.z) < 1e-12);
+
+    Lattice2D neumann_lat{
+        8,
+        8,
+        1.0,
+        1.0,
+        BoundaryCondition::Neumann
+    };
+    O3Field neumann = O3Field::uniform(neumann_lat, Vec3{ 0.0, 0.0, 1.0 });
+    neumann(0, 4) = Vec3{ 1.0, 0.0, 0.0 };
+    flow.step(neumann);
+
+    assert(neumann(0, 4).x < 1.0);
+    assert(neumann(0, 4).z > 0.0);
+
     std::cout << "GradientFlow tests passed successfully\n";
     std::cout << "Energy before = " << energy_before << "\n";
     std::cout << "Energy after  = " << energy_after << "\n";

@@ -11,6 +11,35 @@ from solitonkit.cli import main as cli_main
 
 
 class FieldIoAnimationTests(unittest.TestCase):
+    def test_boundary_conditions(self) -> None:
+        fixed = sk.make_uniform_field(8, 8, boundary="fixed")
+        fixed.set(0, 4, sk.Vec3(1.0, 0.0, 0.0))
+        fixed_before = fixed.to_numpy().copy()
+        sk.run_gradient_flow_inplace(fixed, step_size=0.05, steps=1)
+
+        self.assertEqual(fixed.boundary, "fixed")
+        np.testing.assert_allclose(
+            fixed.to_numpy()[0, :, :],
+            fixed_before[0, :, :],
+            atol=1e-12,
+        )
+        np.testing.assert_allclose(
+            fixed.to_numpy()[:, 0, :],
+            fixed_before[:, 0, :],
+            atol=1e-12,
+        )
+
+        neumann = sk.make_uniform_field(8, 8, boundary="neumann")
+        neumann.set(0, 4, sk.Vec3(1.0, 0.0, 0.0))
+        sk.run_gradient_flow_inplace(neumann, step_size=0.05, steps=1)
+
+        self.assertEqual(neumann.boundary, "neumann")
+        self.assertLess(neumann.get(0, 4).x, 1.0)
+        self.assertGreater(neumann.get(0, 4).z, 0.0)
+
+        with self.assertRaises(ValueError):
+            sk.make_uniform_field(8, 8, boundary="unknown")
+
     def test_skyrmion_charge_parameter_matches_observable(self) -> None:
         positive = sk.make_skyrmion_field(
             64,
@@ -37,6 +66,7 @@ class FieldIoAnimationTests(unittest.TestCase):
             dx=0.25,
             dy=0.4,
             radius=2.0,
+            boundary="fixed",
         )
 
         with tempfile.TemporaryDirectory() as directory:
@@ -56,6 +86,7 @@ class FieldIoAnimationTests(unittest.TestCase):
             self.assertTrue(path.is_file())
             self.assertAlmostEqual(loaded.dx, 0.25)
             self.assertAlmostEqual(loaded.dy, 0.4)
+            self.assertEqual(loaded.boundary, "fixed")
             self.assertEqual(metadata["model"], "baby-skyrme")
             self.assertEqual(metadata["charge"], 1)
             np.testing.assert_allclose(
@@ -107,6 +138,7 @@ class FieldIoAnimationTests(unittest.TestCase):
                         "--ny", "20",
                         "--spacing", "0.5",
                         "--radius", "2.0",
+                        "--boundary", "fixed",
                         "--output", str(initial),
                     ]
                 ),
@@ -143,6 +175,29 @@ class FieldIoAnimationTests(unittest.TestCase):
             for path in (initial, relaxed, records, plot):
                 self.assertTrue(path.is_file())
                 self.assertGreater(path.stat().st_size, 0)
+
+            loaded = sk.load_field_npz(relaxed)
+            self.assertEqual(loaded.boundary, "fixed")
+
+    def test_legacy_npz_defaults_to_periodic(self) -> None:
+        field = sk.make_uniform_field(4, 4)
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "legacy.npz"
+            np.savez(
+                path,
+                field=field.to_numpy(),
+                dx=np.asarray(0.5),
+                dy=np.asarray(0.75),
+                format_version=np.asarray(1),
+                metadata_json=np.asarray("{}"),
+            )
+
+            loaded = sk.load_field_npz(path)
+
+            self.assertEqual(loaded.boundary, "periodic")
+            self.assertAlmostEqual(loaded.dx, 0.5)
+            self.assertAlmostEqual(loaded.dy, 0.75)
 
 
 if __name__ == "__main__":

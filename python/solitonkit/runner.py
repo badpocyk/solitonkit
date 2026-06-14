@@ -39,6 +39,7 @@ class SimulationConfig:
 
     radius: float = 4.0
     charge: int = 1
+    boundary: str = "periodic"
 
     step_size: float = 0.001
     steps: int = 100
@@ -113,6 +114,7 @@ def create_initial_skyrmion(config: SimulationConfig) -> O3Field:
         charge=config.charge,
         dx=config.dx,
         dy=config.dy,
+        boundary=config.boundary,
     )
 
 
@@ -231,6 +233,7 @@ def save_config_json(config: SimulationConfig, path: str | Path) -> Path:
         "dy": config.dy,
         "radius": config.radius,
         "charge": config.charge,
+        "boundary": config.boundary,
         "step_size": config.step_size,
         "steps": config.steps,
         "record_every": config.record_every,
@@ -264,6 +267,7 @@ def save_summary_txt(result: SimulationResult, path: str | Path) -> Path:
             f"dy = {result.config.effective_dy()}",
             f"radius = {result.config.radius}",
             f"charge = {result.config.charge}",
+            f"boundary = {result.config.boundary}",
             f"step_size = {result.config.step_size}",
             f"steps = {result.config.steps}",
             f"record_every = {result.config.record_every}",
