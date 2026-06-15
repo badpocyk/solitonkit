@@ -1,0 +1,45 @@
+# Build directories
+build/
+out/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+
+# Visual Studio
+.vs/
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# Debug / binary files
+*.pdb
+*.ilk
+*.exe
+*.dll
+*.lib
+*.obj
+
+# Outputs
+output/
+outputs/
+*.png
+*.gif
+*.mp4
+*.npz
+*.csv
+
+# Jupyter
+.ipynb_checkpoints/
