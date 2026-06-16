@@ -77,6 +77,8 @@ namespace solitonkit {
         }
 
         void step(O3Field& field, const BabySkyrmeModel& model) const {
+            field.enforce_boundary_condition();
+
             const auto& lat = field.lattice();
 
             if (lat.nx() < 3 || lat.ny() < 3) {
@@ -102,6 +104,7 @@ namespace solitonkit {
             }
 
             field = updated;
+            field.enforce_boundary_condition();
         }
 
         std::vector<DynamicsRecord> run(
@@ -113,6 +116,8 @@ namespace solitonkit {
             if (record_every == 0) {
                 throw std::runtime_error("record_every must be positive");
             }
+
+            field.enforce_boundary_condition();
 
             std::vector<DynamicsRecord> history;
             history.push_back({

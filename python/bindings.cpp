@@ -19,6 +19,7 @@
 #include "solitonkit/core/O3Field.hpp"
 #include "solitonkit/dynamics/LandauLifshitzDynamics.hpp"
 #include "solitonkit/flows/BabySkyrmeGradientFlow.hpp"
+#include "solitonkit/flows/BabySkyrmeOptimizers.hpp"
 #include "solitonkit/flows/GradientFlow.hpp"
 #include "solitonkit/initializers/SkyrmionAnsatz.hpp"
 #include "solitonkit/models/BabySkyrmeModel.hpp"
@@ -45,8 +46,12 @@ namespace solitonkit_binding {
             return solitonkit::BoundaryCondition::Neumann;
         }
 
+        if (boundary == "dirichlet") {
+            return solitonkit::BoundaryCondition::Dirichlet;
+        }
+
         throw std::invalid_argument(
-            "boundary must be 'periodic', 'fixed', or 'neumann'"
+            "boundary must be 'periodic', 'fixed', 'neumann', or 'dirichlet'"
         );
     }
 
@@ -60,6 +65,8 @@ namespace solitonkit_binding {
             return "fixed";
         case solitonkit::BoundaryCondition::Neumann:
             return "neumann";
+        case solitonkit::BoundaryCondition::Dirichlet:
+            return "dirichlet";
         }
 
         throw std::runtime_error("unknown boundary condition");
@@ -148,6 +155,8 @@ namespace solitonkit_binding {
             }
         }
 
+        field.enforce_boundary_condition();
+
         return field;
     }
 
@@ -197,6 +206,8 @@ namespace solitonkit_binding {
             }
         }
 
+        field.enforce_boundary_condition();
+
         return field;
     }
 
@@ -245,6 +256,8 @@ namespace solitonkit_binding {
             }
         }
 
+        field.enforce_boundary_condition();
+
         return field;
     }
 
@@ -258,11 +271,14 @@ namespace solitonkit_binding {
             solitonkit::BoundaryCondition::Periodic
     ) {
         solitonkit::Lattice2D lattice(nx, ny, dx, dy, boundary);
-
-        return solitonkit::SkyrmionAnsatz::multi_skyrmion(
+        solitonkit::O3Field field = solitonkit::SkyrmionAnsatz::multi_skyrmion(
             lattice,
             specs
         );
+
+        field.enforce_boundary_condition();
+
+        return field;
     }
 
     py::array_t<double> field_to_numpy(const solitonkit::O3Field& field) {
@@ -358,6 +374,8 @@ namespace solitonkit_binding {
                 field(i, j) = sk_normalized(v);
             }
         }
+
+        field.enforce_boundary_condition();
 
         return field;
     }
@@ -603,6 +621,205 @@ namespace solitonkit_binding {
         return std::make_tuple(field, records);
     }
 
+    std::vector<solitonkit::FlowRecord>
+        run_baby_skyrme_riemannian_gradient_descent_inplace(
+            solitonkit::O3Field& field,
+            double kappa,
+            double mass,
+            double step_size,
+            std::size_t steps,
+            std::size_t record_every,
+            double dmi
+        ) {
+        const solitonkit::BabySkyrmeModel model(kappa, mass, dmi);
+        const solitonkit::BabySkyrmeRiemannianGradientDescent optimizer(
+            step_size
+        );
+
+        return optimizer.run(field, model, steps, record_every);
+    }
+
+    std::tuple<solitonkit::O3Field, std::vector<solitonkit::FlowRecord>>
+        run_baby_skyrme_riemannian_gradient_descent(
+            const solitonkit::O3Field& input,
+            double kappa,
+            double mass,
+            double step_size,
+            std::size_t steps,
+            std::size_t record_every,
+            double dmi
+        ) {
+        solitonkit::O3Field field = input;
+
+        std::vector<solitonkit::FlowRecord> records =
+            run_baby_skyrme_riemannian_gradient_descent_inplace(
+                field,
+                kappa,
+                mass,
+                step_size,
+                steps,
+                record_every,
+                dmi
+            );
+
+        return std::make_tuple(field, records);
+    }
+
+    std::vector<solitonkit::FlowRecord>
+        run_baby_skyrme_barzilai_borwein_inplace(
+            solitonkit::O3Field& field,
+            double kappa,
+            double mass,
+            double initial_step_size,
+            double min_step_size,
+            double max_step_size,
+            std::size_t max_line_search_steps,
+            std::size_t steps,
+            std::size_t record_every,
+            double dmi
+        ) {
+        const solitonkit::BabySkyrmeModel model(kappa, mass, dmi);
+        const solitonkit::BabySkyrmeBarzilaiBorweinGradient optimizer(
+            initial_step_size,
+            min_step_size,
+            max_step_size,
+            max_line_search_steps
+        );
+
+        return optimizer.run(field, model, steps, record_every);
+    }
+
+    std::tuple<solitonkit::O3Field, std::vector<solitonkit::FlowRecord>>
+        run_baby_skyrme_barzilai_borwein(
+            const solitonkit::O3Field& input,
+            double kappa,
+            double mass,
+            double initial_step_size,
+            double min_step_size,
+            double max_step_size,
+            std::size_t max_line_search_steps,
+            std::size_t steps,
+            std::size_t record_every,
+            double dmi
+        ) {
+        solitonkit::O3Field field = input;
+
+        std::vector<solitonkit::FlowRecord> records =
+            run_baby_skyrme_barzilai_borwein_inplace(
+                field,
+                kappa,
+                mass,
+                initial_step_size,
+                min_step_size,
+                max_step_size,
+                max_line_search_steps,
+                steps,
+                record_every,
+                dmi
+            );
+
+        return std::make_tuple(field, records);
+    }
+
+    std::vector<solitonkit::FlowRecord> run_baby_skyrme_lbfgs_inplace(
+        solitonkit::O3Field& field,
+        double kappa,
+        double mass,
+        double initial_step_size,
+        std::size_t memory,
+        std::size_t max_line_search_steps,
+        std::size_t steps,
+        std::size_t record_every,
+        double dmi
+    ) {
+        const solitonkit::BabySkyrmeModel model(kappa, mass, dmi);
+        const solitonkit::BabySkyrmeLBFGSOptimizer optimizer(
+            initial_step_size,
+            memory,
+            max_line_search_steps
+        );
+
+        return optimizer.run(field, model, steps, record_every);
+    }
+
+    std::tuple<solitonkit::O3Field, std::vector<solitonkit::FlowRecord>>
+        run_baby_skyrme_lbfgs(
+            const solitonkit::O3Field& input,
+            double kappa,
+            double mass,
+            double initial_step_size,
+            std::size_t memory,
+            std::size_t max_line_search_steps,
+            std::size_t steps,
+            std::size_t record_every,
+            double dmi
+        ) {
+        solitonkit::O3Field field = input;
+
+        std::vector<solitonkit::FlowRecord> records =
+            run_baby_skyrme_lbfgs_inplace(
+                field,
+                kappa,
+                mass,
+                initial_step_size,
+                memory,
+                max_line_search_steps,
+                steps,
+                record_every,
+                dmi
+            );
+
+        return std::make_tuple(field, records);
+    }
+
+    std::vector<solitonkit::FlowRecord>
+        run_baby_skyrme_semi_implicit_flow_inplace(
+            solitonkit::O3Field& field,
+            double kappa,
+            double mass,
+            double step_size,
+            std::size_t implicit_iterations,
+            std::size_t steps,
+            std::size_t record_every,
+            double dmi
+        ) {
+        const solitonkit::BabySkyrmeModel model(kappa, mass, dmi);
+        const solitonkit::BabySkyrmeSemiImplicitFlow optimizer(
+            step_size,
+            implicit_iterations
+        );
+
+        return optimizer.run(field, model, steps, record_every);
+    }
+
+    std::tuple<solitonkit::O3Field, std::vector<solitonkit::FlowRecord>>
+        run_baby_skyrme_semi_implicit_flow(
+            const solitonkit::O3Field& input,
+            double kappa,
+            double mass,
+            double step_size,
+            std::size_t implicit_iterations,
+            std::size_t steps,
+            std::size_t record_every,
+            double dmi
+        ) {
+        solitonkit::O3Field field = input;
+
+        std::vector<solitonkit::FlowRecord> records =
+            run_baby_skyrme_semi_implicit_flow_inplace(
+                field,
+                kappa,
+                mass,
+                step_size,
+                implicit_iterations,
+                steps,
+                record_every,
+                dmi
+            );
+
+        return std::make_tuple(field, records);
+    }
+
     std::vector<solitonkit::DynamicsRecord> run_landau_lifshitz_inplace(
         solitonkit::O3Field& field,
         double kappa,
@@ -706,7 +923,8 @@ PYBIND11_MODULE(_core, m) {
     py::enum_<solitonkit::BoundaryCondition>(m, "BoundaryCondition")
         .value("Periodic", solitonkit::BoundaryCondition::Periodic)
         .value("Fixed", solitonkit::BoundaryCondition::Fixed)
-        .value("Neumann", solitonkit::BoundaryCondition::Neumann);
+        .value("Neumann", solitonkit::BoundaryCondition::Neumann)
+        .value("Dirichlet", solitonkit::BoundaryCondition::Dirichlet);
 
     py::class_<solitonkit::Vec3>(m, "Vec3")
         .def(py::init<>())
@@ -775,6 +993,7 @@ PYBIND11_MODULE(_core, m) {
     })
         .def("set", [](solitonkit::O3Field& field, std::size_t i, std::size_t j, const solitonkit::Vec3& value) {
         field(i, j) = sk_normalized(value);
+        field.enforce_boundary_condition();
     })
         .def("to_numpy", &field_to_numpy)
         .def("__repr__", [](const solitonkit::O3Field& field) {
@@ -1085,6 +1304,114 @@ PYBIND11_MODULE(_core, m) {
         py::arg("kappa") = 1.0,
         py::arg("mass") = 1.0,
         py::arg("step_size") = 1e-4,
+        py::arg("steps") = 1000,
+        py::arg("record_every") = 10,
+        py::arg("dmi") = 0.0
+    );
+
+    m.def(
+        "run_baby_skyrme_riemannian_gradient_descent_inplace",
+        &run_baby_skyrme_riemannian_gradient_descent_inplace,
+        py::arg("field"),
+        py::arg("kappa") = 1.0,
+        py::arg("mass") = 1.0,
+        py::arg("step_size") = 1e-4,
+        py::arg("steps") = 1000,
+        py::arg("record_every") = 10,
+        py::arg("dmi") = 0.0
+    );
+
+    m.def(
+        "run_baby_skyrme_riemannian_gradient_descent",
+        &run_baby_skyrme_riemannian_gradient_descent,
+        py::arg("field"),
+        py::arg("kappa") = 1.0,
+        py::arg("mass") = 1.0,
+        py::arg("step_size") = 1e-4,
+        py::arg("steps") = 1000,
+        py::arg("record_every") = 10,
+        py::arg("dmi") = 0.0
+    );
+
+    m.def(
+        "run_baby_skyrme_barzilai_borwein_inplace",
+        &run_baby_skyrme_barzilai_borwein_inplace,
+        py::arg("field"),
+        py::arg("kappa") = 1.0,
+        py::arg("mass") = 1.0,
+        py::arg("initial_step_size") = 1e-4,
+        py::arg("min_step_size") = 1e-8,
+        py::arg("max_step_size") = 1e-2,
+        py::arg("max_line_search_steps") = 12,
+        py::arg("steps") = 1000,
+        py::arg("record_every") = 10,
+        py::arg("dmi") = 0.0
+    );
+
+    m.def(
+        "run_baby_skyrme_barzilai_borwein",
+        &run_baby_skyrme_barzilai_borwein,
+        py::arg("field"),
+        py::arg("kappa") = 1.0,
+        py::arg("mass") = 1.0,
+        py::arg("initial_step_size") = 1e-4,
+        py::arg("min_step_size") = 1e-8,
+        py::arg("max_step_size") = 1e-2,
+        py::arg("max_line_search_steps") = 12,
+        py::arg("steps") = 1000,
+        py::arg("record_every") = 10,
+        py::arg("dmi") = 0.0
+    );
+
+    m.def(
+        "run_baby_skyrme_lbfgs_inplace",
+        &run_baby_skyrme_lbfgs_inplace,
+        py::arg("field"),
+        py::arg("kappa") = 1.0,
+        py::arg("mass") = 1.0,
+        py::arg("initial_step_size") = 1.0,
+        py::arg("memory") = 5,
+        py::arg("max_line_search_steps") = 12,
+        py::arg("steps") = 1000,
+        py::arg("record_every") = 10,
+        py::arg("dmi") = 0.0
+    );
+
+    m.def(
+        "run_baby_skyrme_lbfgs",
+        &run_baby_skyrme_lbfgs,
+        py::arg("field"),
+        py::arg("kappa") = 1.0,
+        py::arg("mass") = 1.0,
+        py::arg("initial_step_size") = 1.0,
+        py::arg("memory") = 5,
+        py::arg("max_line_search_steps") = 12,
+        py::arg("steps") = 1000,
+        py::arg("record_every") = 10,
+        py::arg("dmi") = 0.0
+    );
+
+    m.def(
+        "run_baby_skyrme_semi_implicit_flow_inplace",
+        &run_baby_skyrme_semi_implicit_flow_inplace,
+        py::arg("field"),
+        py::arg("kappa") = 1.0,
+        py::arg("mass") = 1.0,
+        py::arg("step_size") = 1e-3,
+        py::arg("implicit_iterations") = 20,
+        py::arg("steps") = 1000,
+        py::arg("record_every") = 10,
+        py::arg("dmi") = 0.0
+    );
+
+    m.def(
+        "run_baby_skyrme_semi_implicit_flow",
+        &run_baby_skyrme_semi_implicit_flow,
+        py::arg("field"),
+        py::arg("kappa") = 1.0,
+        py::arg("mass") = 1.0,
+        py::arg("step_size") = 1e-3,
+        py::arg("implicit_iterations") = 20,
         py::arg("steps") = 1000,
         py::arg("record_every") = 10,
         py::arg("dmi") = 0.0

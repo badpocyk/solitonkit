@@ -12,7 +12,7 @@ from .core import O3Field, field_from_numpy
 
 FIELD_FORMAT_VERSION = 2
 SUPPORTED_FIELD_FORMAT_VERSIONS = {1, FIELD_FORMAT_VERSION}
-BOUNDARY_CONDITIONS = {"periodic", "fixed", "neumann"}
+BOUNDARY_CONDITIONS = {"periodic", "fixed", "neumann", "dirichlet"}
 
 
 def _field_spacing(
@@ -68,7 +68,9 @@ def save_field_npz(
         boundary = str(getattr(field, "boundary", "periodic"))
 
     if boundary not in BOUNDARY_CONDITIONS:
-        raise ValueError("boundary must be 'periodic', 'fixed', or 'neumann'")
+        raise ValueError(
+            "boundary must be 'periodic', 'fixed', 'neumann', or 'dirichlet'"
+        )
 
     if not np.all(np.isfinite(array)):
         raise ValueError("field contains non-finite values")

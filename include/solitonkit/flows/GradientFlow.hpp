@@ -93,6 +93,8 @@ namespace solitonkit {
         }
 
         void step(O3Field& field) const {
+            field.enforce_boundary_condition();
+
             const auto& lat = field.lattice();
 
             O3Field updated = field;
@@ -118,6 +120,7 @@ namespace solitonkit {
             }
 
             field = updated;
+            field.enforce_boundary_condition();
         }
 
         std::vector<FlowRecord> run(
@@ -129,6 +132,8 @@ namespace solitonkit {
             if (record_every == 0) {
                 throw std::runtime_error("record_every must be positive");
             }
+
+            field.enforce_boundary_condition();
 
             std::vector<FlowRecord> history;
 

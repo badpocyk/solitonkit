@@ -290,8 +290,9 @@ def make_skyrmion_field(
     """
     Create a skyrmion as a real C++ O3Field.
 
-    boundary may be "periodic", "fixed", or "neumann". Fixed boundaries
-    retain their initial edge values during gradient flow.
+    boundary may be "periodic", "fixed", "neumann", or "dirichlet".
+    Fixed boundaries retain their initial edge values during relaxation;
+    Dirichlet boundaries pin the edge to the vacuum n=(0, 0, 1).
     """
 
     if dx is None:
@@ -574,7 +575,7 @@ def make_multi_skyrmion_field(
         List of internal phases / rotations.
 
     boundary:
-        "periodic", "fixed", or "neumann".
+        "periodic", "fixed", "neumann", or "dirichlet".
     """
 
     if centers is None:
@@ -728,6 +729,224 @@ def run_baby_skyrme_gradient_flow(
         float(kappa),
         float(mass),
         float(step_size),
+        int(steps),
+        int(record_every),
+        float(dmi),
+    )
+
+def run_baby_skyrme_riemannian_gradient_descent_inplace(
+    field: Any,
+    kappa: float = 1.0,
+    mass: float = 1.0,
+    step_size: float = 1e-4,
+    steps: int = 1000,
+    record_every: int = 10,
+    dmi: float = 0.0,
+) -> list[FlowRecord]:
+    """
+    Relax a field in place using Riemannian gradient descent.
+
+    The update is applied with the exponential map on S^2 instead of
+    Euler plus renormalization.
+    """
+
+    return _cpp.run_baby_skyrme_riemannian_gradient_descent_inplace(
+        _unwrap_field(field),
+        float(kappa),
+        float(mass),
+        float(step_size),
+        int(steps),
+        int(record_every),
+        float(dmi),
+    )
+
+
+def run_baby_skyrme_riemannian_gradient_descent(
+    field: Any,
+    kappa: float = 1.0,
+    mass: float = 1.0,
+    step_size: float = 1e-4,
+    steps: int = 1000,
+    record_every: int = 10,
+    dmi: float = 0.0,
+) -> Tuple[O3Field, list[FlowRecord]]:
+    """
+    Return a relaxed copy using Riemannian gradient descent.
+    """
+
+    return _cpp.run_baby_skyrme_riemannian_gradient_descent(
+        _unwrap_field(field),
+        float(kappa),
+        float(mass),
+        float(step_size),
+        int(steps),
+        int(record_every),
+        float(dmi),
+    )
+
+
+def run_baby_skyrme_barzilai_borwein_inplace(
+    field: Any,
+    kappa: float = 1.0,
+    mass: float = 1.0,
+    initial_step_size: float = 1e-4,
+    min_step_size: float = 1e-8,
+    max_step_size: float = 1e-2,
+    max_line_search_steps: int = 12,
+    steps: int = 1000,
+    record_every: int = 10,
+    dmi: float = 0.0,
+) -> list[FlowRecord]:
+    """
+    Relax a field in place with a Barzilai-Borwein gradient step.
+    """
+
+    return _cpp.run_baby_skyrme_barzilai_borwein_inplace(
+        _unwrap_field(field),
+        float(kappa),
+        float(mass),
+        float(initial_step_size),
+        float(min_step_size),
+        float(max_step_size),
+        int(max_line_search_steps),
+        int(steps),
+        int(record_every),
+        float(dmi),
+    )
+
+
+def run_baby_skyrme_barzilai_borwein(
+    field: Any,
+    kappa: float = 1.0,
+    mass: float = 1.0,
+    initial_step_size: float = 1e-4,
+    min_step_size: float = 1e-8,
+    max_step_size: float = 1e-2,
+    max_line_search_steps: int = 12,
+    steps: int = 1000,
+    record_every: int = 10,
+    dmi: float = 0.0,
+) -> Tuple[O3Field, list[FlowRecord]]:
+    """
+    Return a relaxed copy using Barzilai-Borwein gradient steps.
+    """
+
+    return _cpp.run_baby_skyrme_barzilai_borwein(
+        _unwrap_field(field),
+        float(kappa),
+        float(mass),
+        float(initial_step_size),
+        float(min_step_size),
+        float(max_step_size),
+        int(max_line_search_steps),
+        int(steps),
+        int(record_every),
+        float(dmi),
+    )
+
+
+def run_baby_skyrme_lbfgs_inplace(
+    field: Any,
+    kappa: float = 1.0,
+    mass: float = 1.0,
+    initial_step_size: float = 1.0,
+    memory: int = 5,
+    max_line_search_steps: int = 12,
+    steps: int = 1000,
+    record_every: int = 10,
+    dmi: float = 0.0,
+) -> list[FlowRecord]:
+    """
+    Relax a field in place using a limited-memory BFGS approximation.
+    """
+
+    return _cpp.run_baby_skyrme_lbfgs_inplace(
+        _unwrap_field(field),
+        float(kappa),
+        float(mass),
+        float(initial_step_size),
+        int(memory),
+        int(max_line_search_steps),
+        int(steps),
+        int(record_every),
+        float(dmi),
+    )
+
+
+def run_baby_skyrme_lbfgs(
+    field: Any,
+    kappa: float = 1.0,
+    mass: float = 1.0,
+    initial_step_size: float = 1.0,
+    memory: int = 5,
+    max_line_search_steps: int = 12,
+    steps: int = 1000,
+    record_every: int = 10,
+    dmi: float = 0.0,
+) -> Tuple[O3Field, list[FlowRecord]]:
+    """
+    Return a relaxed copy using limited-memory BFGS.
+    """
+
+    return _cpp.run_baby_skyrme_lbfgs(
+        _unwrap_field(field),
+        float(kappa),
+        float(mass),
+        float(initial_step_size),
+        int(memory),
+        int(max_line_search_steps),
+        int(steps),
+        int(record_every),
+        float(dmi),
+    )
+
+
+def run_baby_skyrme_semi_implicit_flow_inplace(
+    field: Any,
+    kappa: float = 1.0,
+    mass: float = 1.0,
+    step_size: float = 1e-3,
+    implicit_iterations: int = 20,
+    steps: int = 1000,
+    record_every: int = 10,
+    dmi: float = 0.0,
+) -> list[FlowRecord]:
+    """
+    Relax a field in place with an implicit sigma-model smoothing step.
+    """
+
+    return _cpp.run_baby_skyrme_semi_implicit_flow_inplace(
+        _unwrap_field(field),
+        float(kappa),
+        float(mass),
+        float(step_size),
+        int(implicit_iterations),
+        int(steps),
+        int(record_every),
+        float(dmi),
+    )
+
+
+def run_baby_skyrme_semi_implicit_flow(
+    field: Any,
+    kappa: float = 1.0,
+    mass: float = 1.0,
+    step_size: float = 1e-3,
+    implicit_iterations: int = 20,
+    steps: int = 1000,
+    record_every: int = 10,
+    dmi: float = 0.0,
+) -> Tuple[O3Field, list[FlowRecord]]:
+    """
+    Return a relaxed copy with semi-implicit flow.
+    """
+
+    return _cpp.run_baby_skyrme_semi_implicit_flow(
+        _unwrap_field(field),
+        float(kappa),
+        float(mass),
+        float(step_size),
+        int(implicit_iterations),
         int(steps),
         int(record_every),
         float(dmi),
@@ -900,6 +1119,14 @@ __all__ = [
     "baby_skyrme_energy_terms",
     "run_baby_skyrme_gradient_flow",
     "run_baby_skyrme_gradient_flow_inplace",
+    "run_baby_skyrme_riemannian_gradient_descent",
+    "run_baby_skyrme_riemannian_gradient_descent_inplace",
+    "run_baby_skyrme_barzilai_borwein",
+    "run_baby_skyrme_barzilai_borwein_inplace",
+    "run_baby_skyrme_lbfgs",
+    "run_baby_skyrme_lbfgs_inplace",
+    "run_baby_skyrme_semi_implicit_flow",
+    "run_baby_skyrme_semi_implicit_flow_inplace",
     "run_landau_lifshitz",
     "run_landau_lifshitz_inplace",
     "make_multi_skyrmion_field",

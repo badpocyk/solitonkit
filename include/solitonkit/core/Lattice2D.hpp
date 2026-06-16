@@ -8,7 +8,8 @@ namespace solitonkit {
     enum class BoundaryCondition {
         Periodic,
         Fixed,
-        Neumann
+        Neumann,
+        Dirichlet
     };
 
     class Lattice2D {
@@ -112,7 +113,15 @@ namespace solitonkit {
         }
 
         bool is_fixed_boundary(std::size_t i, std::size_t j) const {
-            return boundary_condition_ == BoundaryCondition::Fixed
+            return (
+                boundary_condition_ == BoundaryCondition::Fixed
+                || boundary_condition_ == BoundaryCondition::Dirichlet
+            )
+                && is_boundary(i, j);
+        }
+
+        bool is_dirichlet_boundary(std::size_t i, std::size_t j) const {
+            return boundary_condition_ == BoundaryCondition::Dirichlet
                 && is_boundary(i, j);
         }
 

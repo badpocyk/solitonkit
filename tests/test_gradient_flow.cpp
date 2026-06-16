@@ -90,6 +90,29 @@ int main() {
     assert(neumann(0, 4).x < 1.0);
     assert(neumann(0, 4).z > 0.0);
 
+    Lattice2D dirichlet_lat{
+        8,
+        8,
+        1.0,
+        1.0,
+        BoundaryCondition::Dirichlet
+    };
+    O3Field dirichlet = O3Field::uniform(
+        dirichlet_lat,
+        Vec3{ 1.0, 0.0, 0.0 }
+    );
+
+    assert(std::abs(dirichlet(0, 4).x) < 1e-12);
+    assert(std::abs(dirichlet(0, 4).y) < 1e-12);
+    assert(std::abs(dirichlet(0, 4).z - 1.0) < 1e-12);
+
+    dirichlet(0, 4) = Vec3{ 1.0, 0.0, 0.0 };
+    flow.step(dirichlet);
+
+    assert(std::abs(dirichlet(0, 4).x) < 1e-12);
+    assert(std::abs(dirichlet(0, 4).y) < 1e-12);
+    assert(std::abs(dirichlet(0, 4).z - 1.0) < 1e-12);
+
     std::cout << "GradientFlow tests passed successfully\n";
     std::cout << "Energy before = " << energy_before << "\n";
     std::cout << "Energy after  = " << energy_after << "\n";

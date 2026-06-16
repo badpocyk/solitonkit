@@ -15,12 +15,16 @@ namespace solitonkit {
         explicit O3Field(const Lattice2D& lattice)
             : lattice_(lattice),
             values_(lattice.size(), Vec3{ 0.0, 0.0, 1.0 })
-        {}
+        {
+            enforce_boundary_condition();
+        }
 
         O3Field(const Lattice2D& lattice, const Vec3& value)
             : lattice_(lattice),
             values_(lattice.size(), value.normalized())
-        {}
+        {
+            enforce_boundary_condition();
+        }
 
         const Lattice2D& lattice() const {
             return lattice_;
@@ -52,11 +56,35 @@ namespace solitonkit {
             for (auto& v : values_) {
                 v = normalized_value;
             }
+
+            enforce_boundary_condition();
         }
 
         void normalize_all() {
             for (auto& v : values_) {
                 v = v.normalized();
+            }
+
+            enforce_boundary_condition();
+        }
+
+        static Vec3 vacuum_value() {
+            return { 0.0, 0.0, 1.0 };
+        }
+
+        void enforce_boundary_condition() {
+            if (lattice_.boundary_condition() != BoundaryCondition::Dirichlet) {
+                return;
+            }
+
+            const Vec3 vacuum = vacuum_value();
+
+            for (std::size_t j = 0; j < lattice_.ny(); ++j) {
+                for (std::size_t i = 0; i < lattice_.nx(); ++i) {
+                    if (lattice_.is_dirichlet_boundary(i, j)) {
+                        (*this)(i, j) = vacuum;
+                    }
+                }
             }
         }
 
@@ -79,6 +107,8 @@ namespace solitonkit {
 
                 field.at_index(k) = v.normalized();
             }
+
+            field.enforce_boundary_condition();
 
             return field;
         }

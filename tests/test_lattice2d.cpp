@@ -42,7 +42,8 @@ int main() {
 
     for (const auto condition : {
         BoundaryCondition::Fixed,
-        BoundaryCondition::Neumann
+        BoundaryCondition::Neumann,
+        BoundaryCondition::Dirichlet
     }) {
         Lattice2D non_periodic{ 4, 3, 0.5, 0.25, condition };
 
@@ -58,6 +59,17 @@ int main() {
     Lattice2D fixed{ 4, 3, 0.5, 0.25, BoundaryCondition::Fixed };
     assert(fixed.is_fixed_boundary(0, 1));
     assert(!fixed.is_fixed_boundary(1, 1));
+
+    Lattice2D dirichlet{
+        4,
+        3,
+        0.5,
+        0.25,
+        BoundaryCondition::Dirichlet
+    };
+    assert(dirichlet.is_fixed_boundary(0, 1));
+    assert(dirichlet.is_dirichlet_boundary(0, 1));
+    assert(!dirichlet.is_dirichlet_boundary(1, 1));
 
     std::cout << "Lattice2D tests passed successfully\n";
 

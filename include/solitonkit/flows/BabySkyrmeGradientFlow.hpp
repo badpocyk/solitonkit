@@ -136,6 +136,7 @@ namespace solitonkit {
 
         void step(O3Field& field, const BabySkyrmeModel& model) const {
             validate_field(field);
+            field.enforce_boundary_condition();
 
             const auto& lat = field.lattice();
             O3Field updated = field;
@@ -154,6 +155,7 @@ namespace solitonkit {
             }
 
             field = updated;
+            field.enforce_boundary_condition();
         }
 
         std::vector<FlowRecord> run(
@@ -163,6 +165,7 @@ namespace solitonkit {
             std::size_t record_every = 1
         ) const {
             validate_field(field);
+            field.enforce_boundary_condition();
 
             if (record_every == 0) {
                 throw std::runtime_error("record_every must be positive");

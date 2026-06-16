@@ -40,6 +40,28 @@ class FieldIoAnimationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             sk.make_uniform_field(8, 8, boundary="unknown")
 
+        dirichlet = sk.make_uniform_field(
+            8,
+            8,
+            x=1.0,
+            y=0.0,
+            z=0.0,
+            boundary="dirichlet",
+        )
+        self.assertEqual(dirichlet.boundary, "dirichlet")
+        np.testing.assert_allclose(
+            dirichlet.to_numpy()[0, :, :],
+            np.tile(np.asarray([0.0, 0.0, 1.0]), (8, 1)),
+            atol=1e-12,
+        )
+
+        dirichlet.set(0, 4, sk.Vec3(1.0, 0.0, 0.0))
+        np.testing.assert_allclose(
+            dirichlet.to_numpy()[4, 0, :],
+            np.asarray([0.0, 0.0, 1.0]),
+            atol=1e-12,
+        )
+
     def test_skyrmion_charge_parameter_matches_observable(self) -> None:
         positive = sk.make_skyrmion_field(
             64,
@@ -137,6 +159,89 @@ class FieldIoAnimationTests(unittest.TestCase):
                 atol=1e-12,
             )
 
+    def test_dirichlet_npz_round_trip(self) -> None:
+        field = sk.make_skyrmion_field(
+            16,
+            16,
+            dx=0.25,
+            dy=0.25,
+            radius=1.5,
+            boundary="dirichlet",
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "dirichlet.npz"
+            sk.save_field_npz(field, path)
+            loaded = sk.load_field_npz(path)
+
+            self.assertEqual(loaded.boundary, "dirichlet")
+            np.testing.assert_allclose(
+                loaded.to_numpy()[0, :, :],
+                np.tile(np.asarray([0.0, 0.0, 1.0]), (16, 1)),
+                atol=1e-12,
+            )
+
+    def test_baby_skyrme_optimizers(self) -> None:
+        def make_field() -> sk.O3Field:
+            field = sk.make_uniform_field(16, 16, spacing=0.5, boundary="dirichlet")
+            field.set(8, 8, sk.Vec3(1.0, 0.0, 0.0))
+            field.set(7, 8, sk.Vec3(0.8, 0.2, 0.5))
+            return field
+
+        methods = [
+            (
+                sk.run_baby_skyrme_riemannian_gradient_descent,
+                {"step_size": 1e-2},
+            ),
+            (
+                sk.run_baby_skyrme_barzilai_borwein,
+                {
+                    "initial_step_size": 1e-2,
+                    "max_step_size": 1e-1,
+                },
+            ),
+            (
+                sk.run_baby_skyrme_lbfgs,
+                {
+                    "initial_step_size": 1.0,
+                    "memory": 4,
+                },
+            ),
+            (
+                sk.run_baby_skyrme_semi_implicit_flow,
+                {
+                    "step_size": 1e-2,
+                    "implicit_iterations": 10,
+                },
+            ),
+        ]
+
+        for method, kwargs in methods:
+            field = make_field()
+            before = sk.baby_skyrme_energy(field, kappa=0.0, mass=0.0)
+            relaxed, records = method(
+                field,
+                kappa=0.0,
+                mass=0.0,
+                steps=4,
+                record_every=1,
+                **kwargs,
+            )
+            after = sk.baby_skyrme_energy(relaxed, kappa=0.0, mass=0.0)
+
+            self.assertEqual(len(records), 5)
+            self.assertLessEqual(after, before + 1e-10)
+            np.testing.assert_allclose(
+                np.linalg.norm(relaxed.to_numpy(), axis=2),
+                1.0,
+                atol=1e-12,
+            )
+            np.testing.assert_allclose(
+                relaxed.to_numpy()[0, :, :],
+                np.tile(np.asarray([0.0, 0.0, 1.0]), (16, 1)),
+                atol=1e-12,
+            )
+
     def test_flow_snapshots_and_gif(self) -> None:
         field = sk.make_skyrmion_field(
             24,
@@ -221,7 +326,7 @@ class FieldIoAnimationTests(unittest.TestCase):
                         "--ny", "20",
                         "--spacing", "0.5",
                         "--radius", "2.0",
-                        "--boundary", "fixed",
+                        "--boundary", "dirichlet",
                         "--output", str(initial),
                     ]
                 ),
@@ -236,6 +341,7 @@ class FieldIoAnimationTests(unittest.TestCase):
                         "--output", str(relaxed),
                         "--records", str(records),
                         "--dmi", "0.1",
+                        "--optimizer", "riemannian",
                         "--steps", "2",
                         "--record-every", "1",
                     ]
@@ -285,7 +391,7 @@ class FieldIoAnimationTests(unittest.TestCase):
                 self.assertGreater(path.stat().st_size, 0)
 
             loaded = sk.load_field_npz(evolved)
-            self.assertEqual(loaded.boundary, "fixed")
+            self.assertEqual(loaded.boundary, "dirichlet")
 
             header = dynamics_records.read_text(encoding="utf-8").splitlines()[0]
             self.assertEqual(header, "step,time,energy,topological_charge")

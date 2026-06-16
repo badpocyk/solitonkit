@@ -7,7 +7,11 @@ from typing import Sequence
 from .core import (
     baby_skyrme_energy,
     make_skyrmion_field,
+    run_baby_skyrme_barzilai_borwein,
     run_baby_skyrme_gradient_flow,
+    run_baby_skyrme_lbfgs,
+    run_baby_skyrme_riemannian_gradient_descent,
+    run_baby_skyrme_semi_implicit_flow,
     run_gradient_flow,
     run_landau_lifshitz,
     topological_charge,
@@ -62,15 +66,65 @@ def _command_relax(args: Namespace) -> int:
     )
 
     if args.model == "baby-skyrme":
-        relaxed, records = run_baby_skyrme_gradient_flow(
-            field,
-            kappa=args.kappa,
-            mass=args.mass,
-            step_size=args.step_size,
-            steps=args.steps,
-            record_every=args.record_every,
-            dmi=args.dmi,
-        )
+        if args.optimizer == "gradient":
+            relaxed, records = run_baby_skyrme_gradient_flow(
+                field,
+                kappa=args.kappa,
+                mass=args.mass,
+                step_size=args.step_size,
+                steps=args.steps,
+                record_every=args.record_every,
+                dmi=args.dmi,
+            )
+        elif args.optimizer == "riemannian":
+            relaxed, records = run_baby_skyrme_riemannian_gradient_descent(
+                field,
+                kappa=args.kappa,
+                mass=args.mass,
+                step_size=args.step_size,
+                steps=args.steps,
+                record_every=args.record_every,
+                dmi=args.dmi,
+            )
+        elif args.optimizer == "barzilai-borwein":
+            relaxed, records = run_baby_skyrme_barzilai_borwein(
+                field,
+                kappa=args.kappa,
+                mass=args.mass,
+                initial_step_size=args.step_size,
+                min_step_size=args.min_step_size,
+                max_step_size=args.max_step_size,
+                max_line_search_steps=args.max_line_search_steps,
+                steps=args.steps,
+                record_every=args.record_every,
+                dmi=args.dmi,
+            )
+        elif args.optimizer == "lbfgs":
+            relaxed, records = run_baby_skyrme_lbfgs(
+                field,
+                kappa=args.kappa,
+                mass=args.mass,
+                initial_step_size=args.step_size,
+                memory=args.lbfgs_memory,
+                max_line_search_steps=args.max_line_search_steps,
+                steps=args.steps,
+                record_every=args.record_every,
+                dmi=args.dmi,
+            )
+        elif args.optimizer == "semi-implicit":
+            relaxed, records = run_baby_skyrme_semi_implicit_flow(
+                field,
+                kappa=args.kappa,
+                mass=args.mass,
+                step_size=args.step_size,
+                implicit_iterations=args.implicit_iterations,
+                steps=args.steps,
+                record_every=args.record_every,
+                dmi=args.dmi,
+            )
+        else:
+            raise ValueError(f"unknown optimizer: {args.optimizer}")
+
         final_energy = baby_skyrme_energy(
             relaxed,
             kappa=args.kappa,
@@ -92,6 +146,7 @@ def _command_relax(args: Namespace) -> int:
         "kappa": args.kappa if args.model == "baby-skyrme" else None,
         "mass": args.mass if args.model == "baby-skyrme" else None,
         "dmi": args.dmi if args.model == "baby-skyrme" else None,
+        "optimizer": args.optimizer if args.model == "baby-skyrme" else None,
         "step_size": args.step_size,
         "steps": args.steps,
         "record_every": args.record_every,
@@ -189,7 +244,7 @@ def build_parser() -> ArgumentParser:
     generate.add_argument("--charge", type=int, default=1)
     generate.add_argument(
         "--boundary",
-        choices=("periodic", "fixed", "neumann"),
+        choices=("periodic", "fixed", "neumann", "dirichlet"),
         default="periodic",
     )
     generate.add_argument("--output", type=Path, required=True)
@@ -207,7 +262,23 @@ def build_parser() -> ArgumentParser:
     relax.add_argument("--kappa", type=float, default=1.0)
     relax.add_argument("--mass", type=float, default=1.0)
     relax.add_argument("--dmi", type=float, default=0.0)
+    relax.add_argument(
+        "--optimizer",
+        choices=(
+            "gradient",
+            "riemannian",
+            "barzilai-borwein",
+            "lbfgs",
+            "semi-implicit",
+        ),
+        default="gradient",
+    )
     relax.add_argument("--step-size", type=float, default=1e-4)
+    relax.add_argument("--min-step-size", type=float, default=1e-8)
+    relax.add_argument("--max-step-size", type=float, default=1e-2)
+    relax.add_argument("--max-line-search-steps", type=int, default=12)
+    relax.add_argument("--lbfgs-memory", type=int, default=5)
+    relax.add_argument("--implicit-iterations", type=int, default=20)
     relax.add_argument("--steps", type=int, default=1000)
     relax.add_argument("--record-every", type=int, default=10)
     relax.set_defaults(handler=_command_relax)
