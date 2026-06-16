@@ -568,9 +568,10 @@ namespace solitonkit_binding {
         double mass,
         double step_size,
         std::size_t steps,
-        std::size_t record_every
+        std::size_t record_every,
+        double dmi
     ) {
-        const solitonkit::BabySkyrmeModel model(kappa, mass);
+        const solitonkit::BabySkyrmeModel model(kappa, mass, dmi);
         const solitonkit::BabySkyrmeGradientFlow flow(step_size);
 
         return flow.run(field, model, steps, record_every);
@@ -583,7 +584,8 @@ namespace solitonkit_binding {
             double mass,
             double step_size,
             std::size_t steps,
-            std::size_t record_every
+            std::size_t record_every,
+            double dmi
         ) {
         solitonkit::O3Field field = input;
 
@@ -594,7 +596,8 @@ namespace solitonkit_binding {
                 mass,
                 step_size,
                 steps,
-                record_every
+                record_every,
+                dmi
             );
 
         return std::make_tuple(field, records);
@@ -607,9 +610,10 @@ namespace solitonkit_binding {
         double time_step,
         double damping,
         std::size_t steps,
-        std::size_t record_every
+        std::size_t record_every,
+        double dmi
     ) {
-        const solitonkit::BabySkyrmeModel model(kappa, mass);
+        const solitonkit::BabySkyrmeModel model(kappa, mass, dmi);
         const solitonkit::LandauLifshitzDynamics dynamics(time_step, damping);
 
         return dynamics.run(field, model, steps, record_every);
@@ -623,7 +627,8 @@ namespace solitonkit_binding {
             double time_step,
             double damping,
             std::size_t steps,
-            std::size_t record_every
+            std::size_t record_every,
+            double dmi
         ) {
         solitonkit::O3Field field = input;
 
@@ -635,7 +640,8 @@ namespace solitonkit_binding {
                 time_step,
                 damping,
                 steps,
-                record_every
+                record_every,
+                dmi
             );
 
         return std::make_tuple(field, records);
@@ -1029,32 +1035,35 @@ PYBIND11_MODULE(_core, m) {
 
     m.def(
         "baby_skyrme_energy",
-        [](const solitonkit::O3Field& field, double kappa, double mass) {
-        const solitonkit::BabySkyrmeModel model(kappa, mass);
+        [](const solitonkit::O3Field& field, double kappa, double mass, double dmi) {
+        const solitonkit::BabySkyrmeModel model(kappa, mass, dmi);
         return model.energy(field);
     },
         py::arg("field"),
         py::arg("kappa") = 1.0,
-        py::arg("mass") = 1.0
+        py::arg("mass") = 1.0,
+        py::arg("dmi") = 0.0
     );
 
     m.def(
         "baby_skyrme_energy_terms",
-        [](const solitonkit::O3Field& field, double kappa, double mass) {
-        const solitonkit::BabySkyrmeModel model(kappa, mass);
+        [](const solitonkit::O3Field& field, double kappa, double mass, double dmi) {
+        const solitonkit::BabySkyrmeModel model(kappa, mass, dmi);
         const solitonkit::BabySkyrmeEnergyTerms terms = model.energy_terms(field);
 
         py::dict result;
         result["sigma"] = terms.sigma;
         result["skyrme"] = terms.skyrme;
         result["potential"] = terms.potential;
+        result["dmi"] = terms.dmi;
         result["total"] = terms.total();
 
         return result;
     },
         py::arg("field"),
         py::arg("kappa") = 1.0,
-        py::arg("mass") = 1.0
+        py::arg("mass") = 1.0,
+        py::arg("dmi") = 0.0
     );
 
     m.def(
@@ -1065,7 +1074,8 @@ PYBIND11_MODULE(_core, m) {
         py::arg("mass") = 1.0,
         py::arg("step_size") = 1e-4,
         py::arg("steps") = 1000,
-        py::arg("record_every") = 10
+        py::arg("record_every") = 10,
+        py::arg("dmi") = 0.0
     );
 
     m.def(
@@ -1076,7 +1086,8 @@ PYBIND11_MODULE(_core, m) {
         py::arg("mass") = 1.0,
         py::arg("step_size") = 1e-4,
         py::arg("steps") = 1000,
-        py::arg("record_every") = 10
+        py::arg("record_every") = 10,
+        py::arg("dmi") = 0.0
     );
 
     m.def(
@@ -1088,7 +1099,8 @@ PYBIND11_MODULE(_core, m) {
         py::arg("time_step") = 1e-5,
         py::arg("damping") = 0.0,
         py::arg("steps") = 1000,
-        py::arg("record_every") = 10
+        py::arg("record_every") = 10,
+        py::arg("dmi") = 0.0
     );
 
     m.def(
@@ -1100,7 +1112,8 @@ PYBIND11_MODULE(_core, m) {
         py::arg("time_step") = 1e-5,
         py::arg("damping") = 0.0,
         py::arg("steps") = 1000,
-        py::arg("record_every") = 10
+        py::arg("record_every") = 10,
+        py::arg("dmi") = 0.0
     );
 
     m.def(

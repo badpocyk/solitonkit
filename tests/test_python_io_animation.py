@@ -59,6 +59,48 @@ class FieldIoAnimationTests(unittest.TestCase):
         self.assertGreater(sk.topological_charge(positive), 0.8)
         self.assertLess(sk.topological_charge(negative), -0.8)
 
+    def test_baby_skyrme_dmi_energy_terms(self) -> None:
+        nx = 32
+        ny = 8
+        dx = 0.25
+        dy = 0.5
+        dmi = 0.75
+
+        x = np.arange(nx, dtype=float) * dx
+        wave_number = 2.0 * np.pi / (nx * dx)
+
+        array = np.zeros((ny, nx, 3), dtype=float)
+        array[:, :, 1] = np.sin(wave_number * x)[None, :]
+        array[:, :, 2] = np.cos(wave_number * x)[None, :]
+
+        field = sk.field_from_numpy(
+            array,
+            dx=dx,
+            dy=dy,
+            boundary="periodic",
+        )
+        terms = sk.baby_skyrme_energy_terms(
+            field,
+            kappa=0.0,
+            mass=0.0,
+            dmi=dmi,
+        )
+
+        derivative_scale = np.sin(wave_number * dx) / dx
+        area = nx * ny * dx * dy
+        expected_sigma = 0.5 * derivative_scale * derivative_scale * area
+        expected_dmi = dmi * derivative_scale * area
+
+        self.assertAlmostEqual(terms["sigma"], expected_sigma, places=10)
+        self.assertAlmostEqual(terms["skyrme"], 0.0, places=12)
+        self.assertAlmostEqual(terms["potential"], 0.0, places=12)
+        self.assertAlmostEqual(terms["dmi"], expected_dmi, places=10)
+        self.assertAlmostEqual(
+            terms["total"],
+            sk.baby_skyrme_energy(field, kappa=0.0, mass=0.0, dmi=dmi),
+            places=12,
+        )
+
     def test_npz_round_trip(self) -> None:
         field = sk.make_skyrmion_field(
             24,
@@ -193,6 +235,7 @@ class FieldIoAnimationTests(unittest.TestCase):
                         "--input", str(initial),
                         "--output", str(relaxed),
                         "--records", str(records),
+                        "--dmi", "0.1",
                         "--steps", "2",
                         "--record-every", "1",
                     ]
@@ -209,6 +252,7 @@ class FieldIoAnimationTests(unittest.TestCase):
                         "--records", str(dynamics_records),
                         "--time-step", "0.00001",
                         "--damping", "0.5",
+                        "--dmi", "0.1",
                         "--steps", "2",
                         "--record-every", "1",
                     ]

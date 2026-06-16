@@ -47,6 +47,7 @@ def run_baby_skyrme_gradient_flow_snapshots(
     *,
     kappa: float = 1.0,
     mass: float = 1.0,
+    dmi: float = 0.0,
     step_size: float = 1e-4,
     steps: int = 1000,
     frame_every: int = 10,
@@ -67,7 +68,12 @@ def run_baby_skyrme_gradient_flow_snapshots(
         FlowSnapshot(
             step=0,
             field=_copy_field(relaxed),
-            energy=baby_skyrme_energy(relaxed, kappa=kappa, mass=mass),
+            energy=baby_skyrme_energy(
+                relaxed,
+                kappa=kappa,
+                mass=mass,
+                dmi=dmi,
+            ),
             topological_charge=topological_charge(relaxed),
         )
     ]
@@ -81,6 +87,7 @@ def run_baby_skyrme_gradient_flow_snapshots(
             relaxed,
             kappa=kappa,
             mass=mass,
+            dmi=dmi,
             step_size=step_size,
             steps=chunk,
             record_every=chunk,

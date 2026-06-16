@@ -69,11 +69,13 @@ def _command_relax(args: Namespace) -> int:
             step_size=args.step_size,
             steps=args.steps,
             record_every=args.record_every,
+            dmi=args.dmi,
         )
         final_energy = baby_skyrme_energy(
             relaxed,
             kappa=args.kappa,
             mass=args.mass,
+            dmi=args.dmi,
         )
     else:
         relaxed, records = run_gradient_flow(
@@ -89,6 +91,7 @@ def _command_relax(args: Namespace) -> int:
         "model": args.model,
         "kappa": args.kappa if args.model == "baby-skyrme" else None,
         "mass": args.mass if args.model == "baby-skyrme" else None,
+        "dmi": args.dmi if args.model == "baby-skyrme" else None,
         "step_size": args.step_size,
         "steps": args.steps,
         "record_every": args.record_every,
@@ -145,6 +148,7 @@ def _command_evolve(args: Namespace) -> int:
         damping=args.damping,
         steps=args.steps,
         record_every=args.record_every,
+        dmi=args.dmi,
     )
 
     metadata = dict(input_metadata)
@@ -152,6 +156,7 @@ def _command_evolve(args: Namespace) -> int:
         "model": "landau-lifshitz",
         "kappa": args.kappa,
         "mass": args.mass,
+        "dmi": args.dmi,
         "time_step": args.time_step,
         "damping": args.damping,
         "steps": args.steps,
@@ -201,6 +206,7 @@ def build_parser() -> ArgumentParser:
     )
     relax.add_argument("--kappa", type=float, default=1.0)
     relax.add_argument("--mass", type=float, default=1.0)
+    relax.add_argument("--dmi", type=float, default=0.0)
     relax.add_argument("--step-size", type=float, default=1e-4)
     relax.add_argument("--steps", type=int, default=1000)
     relax.add_argument("--record-every", type=int, default=10)
@@ -215,6 +221,7 @@ def build_parser() -> ArgumentParser:
     evolve.add_argument("--records", type=Path)
     evolve.add_argument("--kappa", type=float, default=1.0)
     evolve.add_argument("--mass", type=float, default=1.0)
+    evolve.add_argument("--dmi", type=float, default=0.0)
     evolve.add_argument("--time-step", type=float, default=1e-5)
     evolve.add_argument("--damping", type=float, default=0.0)
     evolve.add_argument("--steps", type=int, default=1000)

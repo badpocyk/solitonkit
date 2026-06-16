@@ -99,6 +99,15 @@ namespace solitonkit {
             return dx_flux + dy_flux;
         }
 
+        static Vec3 dmi_force_at(
+            const O3Field& field,
+            const BabySkyrmeModel& model,
+            std::size_t i,
+            std::size_t j
+        ) {
+            return -2.0 * model.dmi() * BabySkyrmeModel::curl(field, i, j);
+        }
+
         static Vec3 negative_gradient_at(
             const O3Field& field,
             const BabySkyrmeModel& model,
@@ -109,6 +118,7 @@ namespace solitonkit {
 
             return sigma_force_at(field, i, j)
                 + skyrme_force_at(field, model, i, j)
+                + dmi_force_at(field, model, i, j)
                 + potential_force;
         }
 

@@ -631,7 +631,12 @@ def make_multi_skyrmion_field(
         boundary=str(boundary),
     )
 
-def baby_skyrme_energy(field, kappa: float = 1.0, mass: float = 1.0) -> float:
+def baby_skyrme_energy(
+    field,
+    kappa: float = 1.0,
+    mass: float = 1.0,
+    dmi: float = 0.0,
+) -> float:
     """
     Compute the Baby Skyrme model energy.
 
@@ -643,6 +648,8 @@ def baby_skyrme_energy(field, kappa: float = 1.0, mass: float = 1.0) -> float:
         Strength of the Skyrme stabilizing term.
     mass:
         Strength of the potential term.
+    dmi:
+        Strength of the bulk Dzyaloshinskii-Moriya interaction.
 
     Returns
     -------
@@ -655,6 +662,7 @@ def baby_skyrme_energy(field, kappa: float = 1.0, mass: float = 1.0) -> float:
             _unwrap_field(field),
             float(kappa),
             float(mass),
+            float(dmi),
         )
     )
 
@@ -662,15 +670,17 @@ def baby_skyrme_energy_terms(
     field: Any,
     kappa: float = 1.0,
     mass: float = 1.0,
+    dmi: float = 0.0,
 ) -> dict[str, float]:
     """
-    Return the sigma, Skyrme, potential, and total energy contributions.
+    Return the sigma, Skyrme, potential, DMI, and total contributions.
     """
 
     terms = _cpp.baby_skyrme_energy_terms(
         _unwrap_field(field),
         float(kappa),
         float(mass),
+        float(dmi),
     )
 
     return {name: float(value) for name, value in terms.items()}
@@ -683,6 +693,7 @@ def run_baby_skyrme_gradient_flow_inplace(
     step_size: float = 1e-4,
     steps: int = 1000,
     record_every: int = 10,
+    dmi: float = 0.0,
 ) -> list[FlowRecord]:
     """
     Relax a field in place using the full Baby Skyrme energy.
@@ -695,6 +706,7 @@ def run_baby_skyrme_gradient_flow_inplace(
         float(step_size),
         int(steps),
         int(record_every),
+        float(dmi),
     )
 
 
@@ -705,6 +717,7 @@ def run_baby_skyrme_gradient_flow(
     step_size: float = 1e-4,
     steps: int = 1000,
     record_every: int = 10,
+    dmi: float = 0.0,
 ) -> Tuple[O3Field, list[FlowRecord]]:
     """
     Return a relaxed copy of a field and Baby Skyrme flow records.
@@ -717,6 +730,7 @@ def run_baby_skyrme_gradient_flow(
         float(step_size),
         int(steps),
         int(record_every),
+        float(dmi),
     )
 
 
@@ -728,6 +742,7 @@ def run_landau_lifshitz_inplace(
     damping: float = 0.0,
     steps: int = 1000,
     record_every: int = 10,
+    dmi: float = 0.0,
 ) -> list[DynamicsRecord]:
     """
     Evolve a field in place with damped Landau-Lifshitz dynamics.
@@ -752,6 +767,7 @@ def run_landau_lifshitz_inplace(
         float(damping),
         int(steps),
         int(record_every),
+        float(dmi),
     )
 
 
@@ -763,6 +779,7 @@ def run_landau_lifshitz(
     damping: float = 0.0,
     steps: int = 1000,
     record_every: int = 10,
+    dmi: float = 0.0,
 ) -> Tuple[O3Field, list[DynamicsRecord]]:
     """
     Return an evolved copy of a field and Landau-Lifshitz records.
@@ -787,6 +804,7 @@ def run_landau_lifshitz(
         float(damping),
         int(steps),
         int(record_every),
+        float(dmi),
     )
 
 

@@ -12,16 +12,21 @@ namespace solitonkit {
         double sigma{};
         double skyrme{};
         double potential{};
+        double dmi{};
 
         double total() const {
-            return sigma + skyrme + potential;
+            return sigma + skyrme + potential + dmi;
         }
     };
 
     class BabySkyrmeModel {
     public:
-        BabySkyrmeModel(double kappa = 1.0, double mass = 1.0)
-            : kappa_(kappa), mass_(mass)
+        BabySkyrmeModel(
+            double kappa = 1.0,
+            double mass = 1.0,
+            double dmi = 0.0
+        )
+            : kappa_(kappa), mass_(mass), dmi_(dmi)
         {
             if (kappa_ < 0.0) {
                 throw std::runtime_error("BabySkyrmeModel kappa must be non-negative");
@@ -38,6 +43,10 @@ namespace solitonkit {
 
         double mass() const {
             return mass_;
+        }
+
+        double dmi() const {
+            return dmi_;
         }
 
         static Vec3 derivative_x(
@@ -66,6 +75,21 @@ namespace solitonkit {
             return (field(i, ju) - field(i, jd)) / (2.0 * lat.dy());
         }
 
+        static Vec3 curl(
+            const O3Field& field,
+            std::size_t i,
+            std::size_t j
+        ) {
+            const Vec3 dx = derivative_x(field, i, j);
+            const Vec3 dy = derivative_y(field, i, j);
+
+            return {
+                dy.z,
+                -dx.z,
+                dx.y - dy.x
+            };
+        }
+
         BabySkyrmeEnergyTerms energy_density_terms_at(
             const O3Field& field,
             std::size_t i,
@@ -85,7 +109,10 @@ namespace solitonkit {
             const double potential =
                 mass_ * mass_ * (1.0 - field(i, j).z);
 
-            return { sigma, skyrme, potential };
+            const double dmi =
+                dmi_ * dot(field(i, j), curl(field, i, j));
+
+            return { sigma, skyrme, potential, dmi };
         }
 
         double energy_density_at(
@@ -110,12 +137,13 @@ namespace solitonkit {
             double sigma = 0.0;
             double skyrme = 0.0;
             double potential = 0.0;
+            double dmi = 0.0;
 
             const std::ptrdiff_t nx = static_cast<std::ptrdiff_t>(lat.nx());
             const std::ptrdiff_t ny = static_cast<std::ptrdiff_t>(lat.ny());
 
         #ifdef SOLITONKIT_USE_OPENMP
-        #pragma omp parallel for reduction(+:sigma,skyrme,potential) collapse(2)
+        #pragma omp parallel for reduction(+:sigma,skyrme,potential,dmi) collapse(2)
         #endif
             for (std::ptrdiff_t i = 0; i < nx; ++i) {
                 for (std::ptrdiff_t j = 0; j < ny; ++j) {
@@ -128,10 +156,11 @@ namespace solitonkit {
                     sigma += terms.sigma * cell_area;
                     skyrme += terms.skyrme * cell_area;
                     potential += terms.potential * cell_area;
+                    dmi += terms.dmi * cell_area;
                 }
             }
 
-            return { sigma, skyrme, potential };
+            return { sigma, skyrme, potential, dmi };
         }
 
         double energy(const O3Field& field) const {
@@ -141,6 +170,7 @@ namespace solitonkit {
     private:
         double kappa_;
         double mass_;
+        double dmi_;
     };
 
 } // namespace solitonkit
