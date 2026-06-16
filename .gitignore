@@ -41,5 +41,10 @@ outputs/
 *.npz
 *.csv
 
+# Curated documentation media
+!docs/assets/
+!docs/assets/*.png
+!docs/assets/*.gif
+
 # Jupyter
 .ipynb_checkpoints/

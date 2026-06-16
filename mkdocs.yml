@@ -1,0 +1,13 @@
+site_name: solitonkit
+site_description: C++/Python toolkit for O(3) solitons and baby Skyrmions
+repo_url: https://github.com/badpocyk/solitonkit
+
+theme:
+  name: readthedocs
+
+nav:
+  - Home: index.md
+  - Quickstart: quickstart.md
+  - Theory: theory.md
+  - Python API: python-api.md
+  - CLI: cli.md
