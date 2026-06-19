@@ -5,9 +5,6 @@ visualizing two-dimensional topological solitons: O(3) sigma-model fields,
 baby Skyrmions, Dzyaloshinskii-Moriya interaction terms, gradient flows, and
 Landau-Lifshitz-type dynamics.
 
-The project is designed as both a small research sandbox and a portfolio-ready
-library: a fast header-only C++ core, Python bindings, plotting helpers,
-animation export, `.npz` field I/O, a CLI, tests, and tutorials.
 
 ![Skyrmion diagnostics](https://raw.githubusercontent.com/badpocyk/solitonkit/main/docs/assets/skyrmion_diagnostics.png)
 
