@@ -131,6 +131,7 @@ jobs:
       url: https://pypi.org/p/solitonkit
 
     permissions:
+      contents: read
       id-token: write
 
     steps:
