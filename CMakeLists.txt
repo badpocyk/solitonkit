@@ -1,8 +1,14 @@
 ﻿cmake_minimum_required(VERSION 3.20)
 
+if(DEFINED SKBUILD_PROJECT_VERSION)
+    set(SOLITONKIT_VERSION "${SKBUILD_PROJECT_VERSION}")
+else()
+    set(SOLITONKIT_VERSION "0.1.0")
+endif()
+
 project(
     solitonkit
-    VERSION 0.1.0
+    VERSION ${SOLITONKIT_VERSION}
     LANGUAGES CXX
 )
 
@@ -46,31 +52,35 @@ if(OpenMP_CXX_FOUND)
 endif()
 
 # ============================================================
-# C++ tests
+# Tests
 # ============================================================
 
-enable_testing()
+option(SOLITONKIT_BUILD_TESTS "Build solitonkit tests" ON)
 
-file(GLOB_RECURSE SOLITONKIT_TEST_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp
-)
+if(SOLITONKIT_BUILD_TESTS)
+    enable_testing()
 
-foreach(TEST_SOURCE ${SOLITONKIT_TEST_SOURCES})
-    get_filename_component(TEST_NAME ${TEST_SOURCE} NAME_WE)
-
-    add_executable(${TEST_NAME} ${TEST_SOURCE})
-
-    target_link_libraries(
-        ${TEST_NAME}
-        PRIVATE
-            solitonkit_core
+    file(GLOB_RECURSE SOLITONKIT_TEST_SOURCES
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp
     )
 
-    add_test(
-        NAME ${TEST_NAME}
-        COMMAND ${TEST_NAME}
-    )
-endforeach()
+    foreach(TEST_SOURCE ${SOLITONKIT_TEST_SOURCES})
+        get_filename_component(TEST_NAME ${TEST_SOURCE} NAME_WE)
+
+        add_executable(${TEST_NAME} ${TEST_SOURCE})
+
+        target_link_libraries(
+            ${TEST_NAME}
+            PRIVATE
+                solitonkit_core
+        )
+
+        add_test(
+            NAME ${TEST_NAME}
+            COMMAND ${TEST_NAME}
+        )
+    endforeach()
+endif()
 
 
 # ============================================================
@@ -116,17 +126,25 @@ if(SOLITONKIT_BUILD_PYTHON)
             ${CMAKE_CURRENT_SOURCE_DIR}/include
     )
 
-    set(SOLITONKIT_PYTHON_PACKAGE_DIR
-        ${CMAKE_CURRENT_SOURCE_DIR}/python/solitonkit
-    )
+    if(SKBUILD)
+        install(
+            TARGETS _core
+            LIBRARY DESTINATION solitonkit
+            RUNTIME DESTINATION solitonkit
+        )
+    else()
+        set(SOLITONKIT_PYTHON_PACKAGE_DIR
+            ${CMAKE_CURRENT_SOURCE_DIR}/python/solitonkit
+        )
 
-    set_target_properties(
-        _core
-        PROPERTIES
-            LIBRARY_OUTPUT_DIRECTORY ${SOLITONKIT_PYTHON_PACKAGE_DIR}
-            RUNTIME_OUTPUT_DIRECTORY ${SOLITONKIT_PYTHON_PACKAGE_DIR}
-            ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    )
+        set_target_properties(
+            _core
+            PROPERTIES
+                LIBRARY_OUTPUT_DIRECTORY ${SOLITONKIT_PYTHON_PACKAGE_DIR}
+                RUNTIME_OUTPUT_DIRECTORY ${SOLITONKIT_PYTHON_PACKAGE_DIR}
+                ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        )
+    endif()
 
     if(MSVC)
         target_compile_options(_core PRIVATE /W4)
@@ -134,18 +152,20 @@ if(SOLITONKIT_BUILD_PYTHON)
         target_compile_options(_core PRIVATE -Wall -Wextra -Wpedantic)
     endif()
 
-    add_test(
-        NAME test_python_io_animation
-        COMMAND
-            "${Python3_EXECUTABLE}"
-            "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_python_io_animation.py"
-            -v
-    )
+    if(SOLITONKIT_BUILD_TESTS)
+        add_test(
+            NAME test_python_io_animation
+            COMMAND
+                "${Python3_EXECUTABLE}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_python_io_animation.py"
+                -v
+        )
 
-    set_tests_properties(
-        test_python_io_animation
-        PROPERTIES
-            ENVIRONMENT
-                "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/python;MPLBACKEND=Agg"
-    )
+        set_tests_properties(
+            test_python_io_animation
+            PROPERTIES
+                ENVIRONMENT
+                    "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/python;MPLBACKEND=Agg"
+        )
+    endif()
 endif()

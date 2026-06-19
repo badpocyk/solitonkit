@@ -1,0 +1,57 @@
+name: Package Check
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and inspect package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install packaging tools
+        run: python -m pip install --upgrade build twine
+
+      - name: Build source and wheel distributions
+        run: python -m build
+
+      - name: Check package metadata
+        run: python -m twine check dist/*
+
+      - name: Install the built wheel
+        run: python -m pip install --force-reinstall dist/*.whl
+
+      - name: Smoke-test the installed extension
+        env:
+          MPLBACKEND: Agg
+        run: >-
+          python -c "import solitonkit as sk;
+          assert sk.HAS_CPP_CORE;
+          field = sk.make_uniform_field(4, 4);
+          assert field.nx == 4 and field.ny == 4;
+          print(sk.__version__)"
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: package-check-distributions
+          path: dist/*
+          if-no-files-found: error

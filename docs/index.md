@@ -24,7 +24,8 @@ visualization, animations, and data generation.
 2. [Theory Notes](theory.md)
 3. [Python API Overview](python-api.md)
 4. [CLI Guide](cli.md)
-5. [Demo Notebook](../notebooks/01_solitonkit_demo.ipynb)
+5. [Publishing To PyPI](pypi-release.md)
+6. [Demo Notebook](../notebooks/01_solitonkit_demo.ipynb)
 
 ## Visual Tour
 

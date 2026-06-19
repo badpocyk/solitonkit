@@ -8,7 +8,14 @@ solitonkit
 Python interface for visualizing and running C++ soliton field simulations.
 """
 
-__version__ = "0.1.0"
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as package_version
+
+
+try:
+    __version__ = package_version("solitonkit")
+except PackageNotFoundError:
+    __version__ = "0.1.0"
 
 
 # ---------------------------------------------------------------------

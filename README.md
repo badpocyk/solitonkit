@@ -9,7 +9,7 @@ The project is designed as both a small research sandbox and a portfolio-ready
 library: a fast header-only C++ core, Python bindings, plotting helpers,
 animation export, `.npz` field I/O, a CLI, tests, and tutorials.
 
-![Skyrmion diagnostics](docs/assets/skyrmion_diagnostics.png)
+![Skyrmion diagnostics](https://raw.githubusercontent.com/badpocyk/solitonkit/main/docs/assets/skyrmion_diagnostics.png)
 
 ## Highlights
 
@@ -28,11 +28,19 @@ animation export, `.npz` field I/O, a CLI, tests, and tutorials.
 - Landau-Lifshitz evolution with optional damping.
 - Export to PNG, GIF, MP4, CSV, and NPZ.
 
-![Gradient-flow animation](docs/assets/gradient_flow.gif)
+![Gradient-flow animation](https://raw.githubusercontent.com/badpocyk/solitonkit/main/docs/assets/gradient_flow.gif)
 
 ## Installation
 
 The package builds a pybind11 extension from the C++ headers.
+
+After the first PyPI release:
+
+```powershell
+python -m pip install solitonkit
+```
+
+For an editable source installation:
 
 ```powershell
 python -m pip install -U pip
@@ -96,7 +104,7 @@ sk.save_skyrmion_diagnostics(relaxed, "relaxed.png", spacing=0.25)
 | `neumann` | Boundary accesses are clamped to edge values. | Approximate zero-normal-gradient edges. |
 | `dirichlet` | Boundary sites are pinned to `n=(0,0,1)`. | Isolated Skyrmions on a finite grid. |
 
-![Boundary conditions](docs/assets/boundary_conditions.png)
+![Boundary conditions](https://raw.githubusercontent.com/badpocyk/solitonkit/main/docs/assets/boundary_conditions.png)
 
 For a single Skyrmion, `dirichlet` is usually the physically cleaner finite-grid
 choice because the boundary represents the vacuum at infinity.
@@ -118,7 +126,7 @@ print(terms)
 # {'sigma': ..., 'skyrme': ..., 'potential': ..., 'dmi': ..., 'total': ...}
 ```
 
-![Energy terms](docs/assets/energy_terms.png)
+![Energy terms](https://raw.githubusercontent.com/badpocyk/solitonkit/main/docs/assets/energy_terms.png)
 
 ## Optimizers
 
@@ -133,7 +141,7 @@ relaxed, records = sk.run_baby_skyrme_lbfgs(field)
 relaxed, records = sk.run_baby_skyrme_semi_implicit_flow(field)
 ```
 
-![Optimizer energy comparison](docs/assets/optimizer_energy.png)
+![Optimizer energy comparison](https://raw.githubusercontent.com/badpocyk/solitonkit/main/docs/assets/optimizer_energy.png)
 
 The comparison above uses a perturbed vacuum field as a quick convergence
 sanity check. For topological sectors, monitor both energy and `Q`; very
@@ -171,6 +179,7 @@ solitonkit relax --optimizer semi-implicit
 - [Theory notes](docs/theory.md)
 - [Python API overview](docs/python-api.md)
 - [CLI guide](docs/cli.md)
+- [Publishing to PyPI](docs/pypi-release.md)
 - [Demonstration notebook](notebooks/01_solitonkit_demo.ipynb)
 
 ## Development

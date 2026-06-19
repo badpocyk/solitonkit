@@ -1,20 +1,84 @@
 [build-system]
-requires = ["setuptools>=68"]
-build-backend = "setuptools.build_meta"
+requires = [
+    "scikit-build-core>=0.12.2",
+    "pybind11>=3.0.1",
+]
+build-backend = "scikit_build_core.build"
 
 [project]
 name = "solitonkit"
 version = "0.1.0"
-description = "Python interface for topological field simulations with a C++ core"
+description = "C++/Python toolkit for O(3) solitons and baby Skyrmions"
+readme = "README.md"
 requires-python = ">=3.9"
+authors = [
+    { name = "solitonkit contributors" },
+]
+keywords = [
+    "baby-skyrme",
+    "computational-physics",
+    "o3-sigma-model",
+    "scientific-computing",
+    "skyrmion",
+    "soliton",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Physics",
+]
 dependencies = [
     "numpy",
     "matplotlib",
-    "pillow"
+    "pillow",
+]
+
+[project.optional-dependencies]
+dev = [
+    "build>=1.2",
+    "cibuildwheel==4.1.0",
+    "twine>=6.1",
+]
+docs = [
+    "mkdocs>=1.6",
 ]
 
 [project.scripts]
 solitonkit = "solitonkit.cli:main"
 
-[tool.setuptools.packages.find]
-where = ["python"]
+[project.urls]
+Documentation = "https://github.com/badpocyk/solitonkit/blob/main/docs/index.md"
+Issues = "https://github.com/badpocyk/solitonkit/issues"
+Repository = "https://github.com/badpocyk/solitonkit"
+
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+build-dir = "build/{wheel_tag}"
+cmake.build-type = "Release"
+wheel.packages = ["python/solitonkit"]
+wheel.exclude = [
+    "**.ilk",
+    "**.pdb",
+]
+sdist.exclude = [
+    ".github/**",
+    "docs/assets/**",
+    "notebooks/**",
+]
+
+[tool.scikit-build.cmake.define]
+SOLITONKIT_BUILD_PYTHON = true
+SOLITONKIT_BUILD_TESTS = false
+
+[tool.cibuildwheel]
+build = "cp39-* cp310-* cp311-* cp312-* cp313-* cp314-*"
+skip = "*-musllinux_* *-win32"
+build-verbosity = 1
+test-command = 'python -c "import solitonkit as sk; assert sk.HAS_CPP_CORE; assert sk.make_uniform_field(4, 4).nx == 4; print(sk.__version__)"'
+
+[tool.cibuildwheel.environment]
+MPLBACKEND = "Agg"

@@ -1,0 +1,145 @@
+name: Publish Python Package
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-pypi-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-sdist:
+    name: Build source distribution
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Validate release tag
+        if: github.event_name == 'release'
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: python scripts/check_release_version.py "$RELEASE_TAG"
+
+      - name: Install packaging tools
+        run: python -m pip install --upgrade build twine
+
+      - name: Build source distribution
+        run: python -m build --sdist --outdir dist
+
+      - name: Check source distribution metadata
+        run: python -m twine check dist/*
+
+      - name: Upload source distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: python-sdist
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  build-wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-15-intel
+          - macos-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Install cibuildwheel
+        run: python -m pip install cibuildwheel==4.1.0
+
+      - name: Build and test wheels
+        run: python -m cibuildwheel --output-dir wheelhouse
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v7
+        with:
+          name: python-wheels-${{ matrix.os }}
+          path: wheelhouse/*.whl
+          if-no-files-found: error
+
+  verify-distributions:
+    name: Verify release distributions
+    needs:
+      - build-sdist
+      - build-wheels
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@v8
+        with:
+          pattern: python-*
+          path: dist
+          merge-multiple: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Install Twine
+        run: python -m pip install --upgrade twine
+
+      - name: Check all distribution metadata
+        run: python -m twine check dist/*
+
+      - name: List release files
+        run: python -c "from pathlib import Path; print('\n'.join(sorted(str(path) for path in Path('dist').iterdir())))"
+
+  publish:
+    name: Publish distributions to PyPI
+    if: github.event_name == 'release'
+    needs:
+      - verify-distributions
+    runs-on: ubuntu-latest
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/solitonkit
+
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@v8
+        with:
+          pattern: python-*
+          path: dist
+          merge-multiple: true
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

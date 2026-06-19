@@ -11,3 +11,4 @@ nav:
   - Theory: theory.md
   - Python API: python-api.md
   - CLI: cli.md
+  - PyPI Release: pypi-release.md
