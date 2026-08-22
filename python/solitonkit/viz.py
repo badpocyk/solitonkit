@@ -319,6 +319,88 @@ def plot_density(
     return ax
 
 
+def plot_eigenmode(
+    mode: Any,
+    *,
+    index: int = 0,
+    component: Optional[ComponentName] = None,
+    slice_index: Optional[int] = None,
+    ax: Optional[plt.Axes] = None,
+    title: Optional[str] = None,
+    colorbar: bool = True,
+    origin: str = "lower",
+    cmap: Optional[str] = None,
+) -> plt.Axes:
+    """Plot a scalar, O(3), or sliced 3D stability eigenmode."""
+
+    eigenvalue: Optional[float] = None
+    if hasattr(mode, "modes") and hasattr(mode, "eigenvalues"):
+        if index < 0 or index >= len(mode.modes):
+            raise IndexError("eigenmode index is out of range")
+        eigenvalue = float(mode.eigenvalues[index])
+        mode = mode.modes[index]
+
+    array = np.asarray(mode, dtype=float)
+    vector_mode = False
+    if array.ndim == 2:
+        image_data = array
+    elif array.ndim == 3 and array.shape[-1] == 3:
+        vector_mode = True
+        image_data = array
+    elif array.ndim == 4 and array.shape[-1] == 3:
+        vector_mode = True
+        if slice_index is None:
+            slice_index = array.shape[0] // 2
+        if slice_index < 0 or slice_index >= array.shape[0]:
+            raise IndexError("eigenmode slice_index is out of range")
+        image_data = array[slice_index]
+    else:
+        raise ValueError(
+            "eigenmode must have shape (ny, nx), (ny, nx, 3), or "
+            "(nz, ny, nx, 3)"
+        )
+
+    label = "scalar"
+    signed = True
+    if vector_mode:
+        if component is None:
+            image_data = np.linalg.norm(image_data, axis=-1)
+            label = "magnitude"
+            signed = False
+        else:
+            component_number = component_index(component)
+            image_data = image_data[..., component_number]
+            label = str(component)
+
+    if ax is None:
+        _, ax = plt.subplots(figsize=(6, 5))
+
+    image_options: dict[str, Any] = {"origin": origin}
+    if signed:
+        limit = float(np.max(np.abs(image_data)))
+        if limit == 0.0:
+            limit = 1.0
+        image_options.update({
+            "cmap": cmap or "RdBu_r",
+            "vmin": -limit,
+            "vmax": limit,
+        })
+    else:
+        image_options.update({"cmap": cmap or "viridis", "vmin": 0.0})
+
+    image = ax.imshow(image_data, **image_options)
+    if title is None:
+        title = f"eigenmode {index}: {label}"
+        if eigenvalue is not None:
+            title += f" (lambda={eigenvalue:.6g})"
+    ax.set_title(title)
+    ax.set_xlabel("i")
+    ax.set_ylabel("j")
+    if colorbar:
+        ax.figure.colorbar(image, ax=ax)
+    return ax
+
+
 def plot_skyrmion(
     field: Any,
     *,
@@ -838,6 +920,7 @@ __all__ = [
     "plot_rgb",
     "plot_quiver",
     "plot_density",
+    "plot_eigenmode",
     "plot_skyrmion",
     "plot_surface",
     "save_figure",

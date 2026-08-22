@@ -5,10 +5,12 @@
 
 #include "solitonkit/core/O3Field.hpp"
 #include "solitonkit/core/Vec3.hpp"
+#include "solitonkit/models/Model.hpp"
+#include "solitonkit/operators/DifferentialOperators.hpp"
 
 namespace solitonkit {
 
-    class O3SigmaModel {
+    class O3SigmaModel : public DifferentiableModel<O3Field, Vec3> {
     public:
         explicit O3SigmaModel(double coupling = 1.0)
             : coupling_(coupling)
@@ -22,22 +24,16 @@ namespace solitonkit {
             return coupling_;
         }
 
+        std::string name() const override { return "o3-sigma"; }
+        std::size_t dimensions() const override { return 2; }
+        FieldKind field_kind() const override { return FieldKind::O3_2D; }
+
         Vec3 derivative_x(const O3Field& field, std::size_t i, std::size_t j) const {
-            const auto& lat = field.lattice();
-
-            const std::size_t il = lat.left(i);
-            const std::size_t ir = lat.right(i);
-
-            return (field(ir, j) - field(il, j)) / (2.0 * lat.dx());
+            return differential::derivative_x(field, i, j);
         }
 
         Vec3 derivative_y(const O3Field& field, std::size_t i, std::size_t j) const {
-            const auto& lat = field.lattice();
-
-            const std::size_t jd = lat.down(j);
-            const std::size_t ju = lat.up(j);
-
-            return (field(i, ju) - field(i, jd)) / (2.0 * lat.dy());
+            return differential::derivative_y(field, i, j);
         }
 
         double energy_density_at(
@@ -77,6 +73,26 @@ namespace solitonkit {
             }
 
             return energy;
+        }
+
+        double energy(const O3Field& field) const override {
+            return total_energy(field);
+        }
+
+        std::vector<Vec3> negative_gradient(
+            const O3Field& field
+        ) const override {
+            const auto& lattice = field.lattice();
+            std::vector<Vec3> result(field.size());
+            for (std::size_t j = 0; j < lattice.ny(); ++j) {
+                for (std::size_t i = 0; i < lattice.nx(); ++i) {
+                    if (!lattice.is_fixed_boundary(i, j)) {
+                        result[lattice.index(i, j)] = coupling_
+                            * differential::laplacian(field, i, j);
+                    }
+                }
+            }
+            return result;
         }
 
     private:

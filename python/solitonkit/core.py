@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional, Tuple
+from typing import Any, Callable, Optional, Tuple
 
 import importlib
 
@@ -29,11 +29,147 @@ BACKEND = "cpp"
 # ---------------------------------------------------------------------
 
 Vec3 = _cpp.Vec3
+Vec2 = _cpp.Vec2
 O3Field = _cpp.O3Field
+O3Field3D = _cpp.O3Field3D
+ScalarField2D = _cpp.ScalarField2D
+XYField = _cpp.XYField
 FlowRecord = _cpp.FlowRecord
 DynamicsRecord = _cpp.DynamicsRecord
+SolverRecord = _cpp.SolverRecord
 GradientFlow = _cpp.GradientFlow
 BoundaryCondition = _cpp.BoundaryCondition
+BoundaryConditions2D = _cpp.BoundaryConditions2D
+BoundaryConditions3D = _cpp.BoundaryConditions3D
+FieldKind = _cpp.FieldKind
+Model = _cpp.Model
+MinimizeOptions = _cpp.MinimizeOptions
+SolveOptions = _cpp.SolveOptions
+StabilityOptions = _cpp.StabilityOptions
+GMRESOptions = _cpp.GMRESOptions
+StationaryOptions = _cpp.StationaryOptions
+StationaryRecord = _cpp.StationaryRecord
+ContinuationOptions = _cpp.ContinuationOptions
+VortexDefect = _cpp.VortexDefect
+HopfChargeOptions = _cpp.HopfChargeOptions
+HopfChargeResult = _cpp.HopfChargeResult
+Phi4Model = _cpp.Phi4Model
+SineGordonModel = _cpp.SineGordonModel
+XYModel = _cpp.XYModel
+O3SigmaModel = _cpp.O3SigmaModel
+BabySkyrmeModel = _cpp.BabySkyrmeModel
+DMIType = _cpp.DMIType
+MicromagneticModel = _cpp.MicromagneticModel
+HopfionModel = _cpp.HopfionModel
+HopfionSpec = _cpp.HopfionSpec
+LLGDynamics = _cpp.LLGDynamics
+
+
+@dataclass(frozen=True)
+class StabilityResult:
+    """Lowest Hessian eigenpairs and diagnostics for a field state."""
+
+    eigenvalues: np.ndarray
+    residual_norms: np.ndarray
+    modes: tuple[np.ndarray, ...]
+    gradient_norm: float
+    iterations: int
+    degrees_of_freedom: int
+    converged: bool
+    stationary: bool
+    stable: bool
+    eigenvalue_tolerance: float
+
+    @property
+    def negative_mode_count(self) -> int:
+        return int(np.count_nonzero(
+            self.eigenvalues < -self.eigenvalue_tolerance
+        ))
+
+    @property
+    def soft_mode_count(self) -> int:
+        return int(np.count_nonzero(
+            np.abs(self.eigenvalues) <= self.eigenvalue_tolerance
+        ))
+
+
+@dataclass(frozen=True)
+class LinearSolveResult:
+    """Result of a matrix-free GMRES solve."""
+
+    solution: np.ndarray
+    residual_norm: float
+    iterations: int
+    converged: bool
+
+
+@dataclass(frozen=True)
+class BranchPoint:
+    """One corrected point on a pseudo-arclength continuation branch."""
+
+    parameter: float
+    energy: float
+    residual_norm: float
+    lowest_eigenvalue: float
+    corrector_steps: int
+    converged: bool
+    stable: bool
+    bifurcation_candidate: bool
+    field: Any
+
+
+@dataclass(frozen=True)
+class BranchResult:
+    """A parameterized branch of stationary field configurations."""
+
+    points: tuple[BranchPoint, ...]
+    reached_stop: bool
+    converged: bool
+    parameter_name: str = "parameter"
+
+    @property
+    def parameters(self) -> np.ndarray:
+        return np.asarray([point.parameter for point in self.points])
+
+    @property
+    def energies(self) -> np.ndarray:
+        return np.asarray([point.energy for point in self.points])
+
+    @property
+    def lowest_eigenvalues(self) -> np.ndarray:
+        return np.asarray([
+            point.lowest_eigenvalue for point in self.points
+        ])
+
+    @property
+    def bifurcation_candidates(self) -> tuple[BranchPoint, ...]:
+        return tuple(
+            point for point in self.points if point.bifurcation_candidate
+        )
+
+    def plot(self, y: str = "energy", *, ax: Any = None) -> Any:
+        """Plot energy or the lowest Hessian eigenvalue along the branch."""
+
+        import matplotlib.pyplot as plt
+
+        if ax is None:
+            _, ax = plt.subplots()
+        choices = {
+            "energy": (self.energies, "Energy"),
+            "lowest_eigenvalue": (
+                self.lowest_eigenvalues,
+                "Lowest Hessian eigenvalue",
+            ),
+        }
+        if y not in choices:
+            raise ValueError(
+                "y must be 'energy' or 'lowest_eigenvalue'"
+            )
+        values, label = choices[y]
+        ax.plot(self.parameters, values, marker="o")
+        ax.set_xlabel(self.parameter_name)
+        ax.set_ylabel(label)
+        return ax
 
 
 # ---------------------------------------------------------------------
@@ -176,11 +312,409 @@ class Field2D:
         )
 
 
-def _unwrap_field(field: Any) -> O3Field:
+def _unwrap_field(field: Any) -> Any:
     if isinstance(field, Field2D):
         return field.cpp
 
     return field
+
+
+def minimize(
+    field: Any,
+    model: Model,
+    *,
+    max_steps: int = 1000,
+    step_size: float = 1e-2,
+    tolerance: float = 1e-8,
+    record_every: int = 10,
+    line_search: bool = True,
+    min_step_size: float = 1e-12,
+):
+    """Minimize a model energy and return ``(field_copy, records)``."""
+
+    options = MinimizeOptions()
+    options.max_steps = int(max_steps)
+    options.step_size = float(step_size)
+    options.tolerance = float(tolerance)
+    options.record_every = int(record_every)
+    options.line_search = bool(line_search)
+    options.min_step_size = float(min_step_size)
+    return _cpp.minimize(_unwrap_field(field), model, options)
+
+
+def minimize_inplace(
+    field: Any,
+    model: Model,
+    *,
+    max_steps: int = 1000,
+    step_size: float = 1e-2,
+    tolerance: float = 1e-8,
+    record_every: int = 10,
+    line_search: bool = True,
+    min_step_size: float = 1e-12,
+) -> list[SolverRecord]:
+    """Minimize a model energy in place."""
+
+    options = MinimizeOptions()
+    options.max_steps = int(max_steps)
+    options.step_size = float(step_size)
+    options.tolerance = float(tolerance)
+    options.record_every = int(record_every)
+    options.line_search = bool(line_search)
+    options.min_step_size = float(min_step_size)
+    return _cpp.minimize_inplace(_unwrap_field(field), model, options)
+
+
+def solve(
+    field: Any,
+    model: Model,
+    *,
+    steps: int = 1000,
+    time_step: float = 1e-3,
+    record_every: int = 10,
+    tolerance: float = 0.0,
+):
+    """Integrate the model's dissipative field equation on a copy."""
+
+    options = SolveOptions()
+    options.steps = int(steps)
+    options.time_step = float(time_step)
+    options.record_every = int(record_every)
+    options.tolerance = float(tolerance)
+    return _cpp.solve(_unwrap_field(field), model, options)
+
+
+def solve_inplace(
+    field: Any,
+    model: Model,
+    *,
+    steps: int = 1000,
+    time_step: float = 1e-3,
+    record_every: int = 10,
+    tolerance: float = 0.0,
+) -> list[SolverRecord]:
+    """Integrate the model's dissipative field equation in place."""
+
+    options = SolveOptions()
+    options.steps = int(steps)
+    options.time_step = float(time_step)
+    options.record_every = int(record_every)
+    options.tolerance = float(tolerance)
+    return _cpp.solve_inplace(_unwrap_field(field), model, options)
+
+
+def stability_analysis(
+    field: Any,
+    model: Model,
+    *,
+    modes: int = 6,
+    max_iterations: int = 80,
+    subspace_dimension: Optional[int] = None,
+    tolerance: float = 1e-7,
+    finite_difference_step: float = 1e-5,
+    stationarity_tolerance: float = 1e-6,
+    eigenvalue_tolerance: float = 1e-8,
+    seed: int = 12345,
+) -> StabilityResult:
+    """
+    Compute the lowest matrix-free Hessian eigenmodes around ``field``.
+
+    Scalar and XY fields use their active lattice values directly. O(3) modes
+    are computed in the tangent bundle, with fixed boundary values excluded.
+    ``stationary`` reports whether the projected gradient is small enough for
+    the eigenvalues to have their usual linear-stability interpretation.
+    """
+
+    options = StabilityOptions()
+    options.modes = int(modes)
+    options.max_iterations = int(max_iterations)
+    options.subspace_dimension = (
+        0 if subspace_dimension is None else int(subspace_dimension)
+    )
+    options.tolerance = float(tolerance)
+    options.finite_difference_step = float(finite_difference_step)
+    options.stationarity_tolerance = float(stationarity_tolerance)
+    options.eigenvalue_tolerance = float(eigenvalue_tolerance)
+    options.seed = int(seed)
+
+    raw = _cpp.stability_analysis(_unwrap_field(field), model, options)
+    return StabilityResult(
+        eigenvalues=np.asarray(raw["eigenvalues"], dtype=float),
+        residual_norms=np.asarray(raw["residual_norms"], dtype=float),
+        modes=tuple(np.asarray(mode, dtype=float) for mode in raw["modes"]),
+        gradient_norm=float(raw["gradient_norm"]),
+        iterations=int(raw["iterations"]),
+        degrees_of_freedom=int(raw["degrees_of_freedom"]),
+        converged=bool(raw["converged"]),
+        stationary=bool(raw["stationary"]),
+        stable=bool(raw["stable"]),
+        eigenvalue_tolerance=float(eigenvalue_tolerance),
+    )
+
+
+def gmres(
+    apply: Callable[[np.ndarray], np.ndarray],
+    right_hand_side: Any,
+    *,
+    restart: int = 30,
+    max_iterations: int = 200,
+    tolerance: float = 1e-5,
+    inverse_diagonal: Optional[Any] = None,
+) -> LinearSolveResult:
+    """Solve ``A x = b`` with restarted matrix-free right-preconditioned GMRES."""
+
+    options = GMRESOptions()
+    options.restart = int(restart)
+    options.max_iterations = int(max_iterations)
+    options.tolerance = float(tolerance)
+    rhs = np.asarray(right_hand_side, dtype=float).reshape(-1)
+    preconditioner = [] if inverse_diagonal is None else np.asarray(
+        inverse_diagonal, dtype=float
+    ).reshape(-1).tolist()
+
+    def wrapped(values: list[float]) -> list[float]:
+        output = np.asarray(apply(np.asarray(values, dtype=float)), dtype=float)
+        return output.reshape(-1).tolist()
+
+    raw = _cpp.gmres(wrapped, rhs.tolist(), options, preconditioner)
+    return LinearSolveResult(
+        solution=np.asarray(raw["solution"], dtype=float),
+        residual_norm=float(raw["residual_norm"]),
+        iterations=int(raw["iterations"]),
+        converged=bool(raw["converged"]),
+    )
+
+
+def _stationary_options(
+    *,
+    max_steps: int,
+    tolerance: float,
+    finite_difference_step: float,
+    initial_damping: float,
+    minimum_damping: float,
+    trust_radius: float,
+    line_search: bool,
+    preconditioner_probes: int,
+    preconditioner_floor: float,
+    seed: int,
+    gmres_restart: int,
+    gmres_max_iterations: int,
+    gmres_tolerance: float,
+) -> StationaryOptions:
+    options = StationaryOptions()
+    options.max_steps = int(max_steps)
+    options.tolerance = float(tolerance)
+    options.finite_difference_step = float(finite_difference_step)
+    options.initial_damping = float(initial_damping)
+    options.minimum_damping = float(minimum_damping)
+    options.trust_radius = float(trust_radius)
+    options.line_search = bool(line_search)
+    options.preconditioner_probes = int(preconditioner_probes)
+    options.preconditioner_floor = float(preconditioner_floor)
+    options.seed = int(seed)
+    options.gmres.restart = int(gmres_restart)
+    options.gmres.max_iterations = int(gmres_max_iterations)
+    options.gmres.tolerance = float(gmres_tolerance)
+    return options
+
+
+def solve_stationary(
+    field: Any,
+    model: Model,
+    *,
+    max_steps: int = 40,
+    tolerance: float = 1e-8,
+    finite_difference_step: float = 1e-5,
+    initial_damping: float = 1.0,
+    minimum_damping: float = 1e-6,
+    trust_radius: float = 10.0,
+    line_search: bool = True,
+    preconditioner_probes: int = 4,
+    preconditioner_floor: float = 1e-6,
+    seed: int = 12345,
+    gmres_restart: int = 30,
+    gmres_max_iterations: int = 200,
+    gmres_tolerance: float = 1e-9,
+):
+    """Find a stationary state with damped matrix-free Newton--Krylov."""
+
+    options = _stationary_options(
+        max_steps=max_steps,
+        tolerance=tolerance,
+        finite_difference_step=finite_difference_step,
+        initial_damping=initial_damping,
+        minimum_damping=minimum_damping,
+        trust_radius=trust_radius,
+        line_search=line_search,
+        preconditioner_probes=preconditioner_probes,
+        preconditioner_floor=preconditioner_floor,
+        seed=seed,
+        gmres_restart=gmres_restart,
+        gmres_max_iterations=gmres_max_iterations,
+        gmres_tolerance=gmres_tolerance,
+    )
+    return _cpp.solve_stationary(_unwrap_field(field), model, options)
+
+
+def solve_stationary_inplace(
+    field: Any,
+    model: Model,
+    **kwargs: Any,
+) -> list[StationaryRecord]:
+    """Newton--Krylov solve that updates ``field`` in place."""
+
+    defaults = {
+        "max_steps": 40,
+        "tolerance": 1e-8,
+        "finite_difference_step": 1e-5,
+        "initial_damping": 1.0,
+        "minimum_damping": 1e-6,
+        "trust_radius": 10.0,
+        "line_search": True,
+        "preconditioner_probes": 4,
+        "preconditioner_floor": 1e-6,
+        "seed": 12345,
+        "gmres_restart": 30,
+        "gmres_max_iterations": 200,
+        "gmres_tolerance": 1e-9,
+    }
+    unknown = set(kwargs) - set(defaults)
+    if unknown:
+        raise TypeError(f"unexpected option(s): {', '.join(sorted(unknown))}")
+    defaults.update(kwargs)
+    options = _stationary_options(**defaults)
+    return _cpp.solve_stationary_inplace(
+        _unwrap_field(field), model, options
+    )
+
+
+def continue_solution(
+    field: Any,
+    model_factory: Callable[[float], Model],
+    *,
+    start: float,
+    stop: float,
+    step: float,
+    parameter_name: str = "parameter",
+    minimum_step: float = 1e-4,
+    maximum_step: float = 0.25,
+    max_points: int = 100,
+    corrector_tolerance: float = 1e-7,
+    max_corrector_steps: int = 12,
+    analyze_stability: bool = True,
+    bifurcation_tolerance: float = 1e-5,
+    stationary_tolerance: float = 1e-8,
+    stability_modes: int = 1,
+    seed: int = 12345,
+) -> BranchResult:
+    """Trace stationary solutions with adaptive pseudo-arclength continuation."""
+
+    options = ContinuationOptions()
+    options.start = float(start)
+    options.stop = float(stop)
+    options.step = float(step)
+    options.minimum_step = float(minimum_step)
+    options.maximum_step = float(maximum_step)
+    options.max_points = int(max_points)
+    options.corrector_tolerance = float(corrector_tolerance)
+    options.max_corrector_steps = int(max_corrector_steps)
+    options.analyze_stability = bool(analyze_stability)
+    options.bifurcation_tolerance = float(bifurcation_tolerance)
+    options.stationary.tolerance = float(stationary_tolerance)
+    options.stationary.gmres.tolerance = min(
+        1e-8, max(1e-12, 0.1 * float(stationary_tolerance))
+    )
+    options.gmres.tolerance = min(
+        1e-7, max(1e-12, 0.1 * float(corrector_tolerance))
+    )
+    options.stability.modes = int(stability_modes)
+    options.seed = int(seed)
+
+    prototype = model_factory(float(start))
+    backends = (
+        (Phi4Model, _cpp._continue_phi4),
+        (SineGordonModel, _cpp._continue_sine_gordon),
+        (XYModel, _cpp._continue_xy),
+        (O3SigmaModel, _cpp._continue_o3_sigma),
+        (BabySkyrmeModel, _cpp._continue_baby_skyrme),
+        (MicromagneticModel, _cpp._continue_micromagnetic),
+        (HopfionModel, _cpp._continue_hopfion),
+    )
+    backend = next(
+        (function for model_type, function in backends
+         if isinstance(prototype, model_type)),
+        None,
+    )
+    if backend is None:
+        raise TypeError("model_factory returned an unsupported model type")
+    raw = backend(_unwrap_field(field), model_factory, options)
+    points = tuple(BranchPoint(
+        parameter=float(item["parameter"]),
+        energy=float(item["energy"]),
+        residual_norm=float(item["residual_norm"]),
+        lowest_eigenvalue=float(item["lowest_eigenvalue"]),
+        corrector_steps=int(item["corrector_steps"]),
+        converged=bool(item["converged"]),
+        stable=bool(item["stable"]),
+        bifurcation_candidate=bool(item["bifurcation_candidate"]),
+        field=item["field"],
+    ) for item in raw["points"])
+    return BranchResult(
+        points=points,
+        reached_stop=bool(raw["reached_stop"]),
+        converged=bool(raw["converged"]),
+        parameter_name=str(parameter_name),
+    )
+
+
+def degree(field: Any) -> float:
+    """Geometric Brouwer degree of a two-dimensional O(3) field."""
+
+    return float(_cpp.degree(_unwrap_field(field)))
+
+
+def detect_defects(field: XYField, *, threshold: float = 0.5):
+    """Locate integer plaquette vortices in an XY field."""
+
+    return _cpp.detect_defects(field, float(threshold))
+
+
+def vortex_number(field: XYField) -> int:
+    """Return the net integer XY vortex number."""
+
+    return int(_cpp.vortex_number(field))
+
+
+def winding_number(field: XYField) -> int:
+    """Alias for :func:`vortex_number`."""
+
+    return int(_cpp.winding_number(field))
+
+
+def hopf_charge(
+    field: O3Field3D,
+    *,
+    max_iterations: int = 2000,
+    tolerance: float = 1e-8,
+    return_diagnostics: bool = False,
+):
+    """Compute the numerical Hopf invariant via a Coulomb-gauge Poisson solve."""
+
+    options = HopfChargeOptions()
+    options.max_iterations = int(max_iterations)
+    options.tolerance = float(tolerance)
+    result = _cpp.hopf_charge(field, options)
+    return result if return_diagnostics else float(result.charge)
+
+
+derivative_x = _cpp.derivative_x
+derivative_y = _cpp.derivative_y
+derivative_z = _cpp.derivative_z
+laplacian = _cpp.laplacian
+gradient = _cpp.gradient
+curl = _cpp.curl
+make_hopfion_field = _cpp.make_hopfion_field
+run_llg = _cpp.run_llg
 
 
 # ---------------------------------------------------------------------
@@ -207,10 +741,21 @@ def core_info() -> dict[str, Any]:
         "has_cpp_core": True,
         "module": "solitonkit._core",
         "classes": [
+            "Vec2",
             "Vec3",
             "O3Field",
+            "O3Field3D",
+            "ScalarField2D",
+            "XYField",
+            "Model",
+            "Phi4Model",
+            "SineGordonModel",
+            "XYModel",
+            "MicromagneticModel",
+            "HopfionModel",
             "FlowRecord",
             "DynamicsRecord",
+            "SolverRecord",
             "GradientFlow",
             "BoundaryCondition",
         ],
@@ -423,6 +968,8 @@ def field_from_numpy(
     dx: Optional[float] = None,
     dy: Optional[float] = None,
     boundary: str = "periodic",
+    boundary_x: Optional[str] = None,
+    boundary_y: Optional[str] = None,
 ) -> O3Field:
     if dx is None:
         dx = spacing
@@ -430,11 +977,62 @@ def field_from_numpy(
     if dy is None:
         dy = spacing
 
-    return _cpp.field_from_numpy(array, dx, dy, boundary)
+    if boundary_x is None:
+        boundary_x = boundary
+
+    if boundary_y is None:
+        boundary_y = boundary
+
+    return _cpp.field_from_numpy_with_boundaries(
+        array,
+        dx,
+        dy,
+        boundary_x,
+        boundary_y,
+    )
+
+
+def field3d_from_numpy(
+    array: np.ndarray,
+    spacing: float = 1.0,
+    *,
+    dx: Optional[float] = None,
+    dy: Optional[float] = None,
+    dz: Optional[float] = None,
+    boundary: str = "periodic",
+    boundary_x: Optional[str] = None,
+    boundary_y: Optional[str] = None,
+    boundary_z: Optional[str] = None,
+) -> O3Field3D:
+    """Create a normalized 3D O(3) field from ``(nz, ny, nx, 3)`` data."""
+
+    dx = spacing if dx is None else dx
+    dy = spacing if dy is None else dy
+    dz = spacing if dz is None else dz
+    boundary_x = boundary if boundary_x is None else boundary_x
+    boundary_y = boundary if boundary_y is None else boundary_y
+    boundary_z = boundary if boundary_z is None else boundary_z
+    return _cpp.field3d_from_numpy(
+        array,
+        dx,
+        dy,
+        dz,
+        boundary_x,
+        boundary_y,
+        boundary_z,
+    )
 
 
 def field_to_numpy(field: Any) -> np.ndarray:
-    return _cpp.field_to_numpy(_unwrap_field(field))
+    field = _unwrap_field(field)
+
+    if isinstance(field, O3Field):
+        return _cpp.field_to_numpy(field)
+
+    if hasattr(field, "to_numpy"):
+        return np.asarray(field.to_numpy(), dtype=float)
+
+    raise TypeError("field does not provide a NumPy conversion")
 
 
 def field2d_to_numpy(field: Field2D) -> np.ndarray:
@@ -1082,17 +1680,72 @@ __all__ = [
     "CPP_CORE_AVAILABLE",
     "BACKEND",
     "SkyrmionConfig",
+    "Vec2",
     "Vec3",
     "O3Field",
+    "O3Field3D",
+    "ScalarField2D",
+    "XYField",
     "Field2D",
     "FlowRecord",
     "DynamicsRecord",
+    "SolverRecord",
     "GradientFlow",
     "BoundaryCondition",
+    "BoundaryConditions2D",
+    "BoundaryConditions3D",
+    "FieldKind",
+    "Model",
+    "MinimizeOptions",
+    "SolveOptions",
+    "StabilityOptions",
+    "StabilityResult",
+    "GMRESOptions",
+    "StationaryOptions",
+    "StationaryRecord",
+    "ContinuationOptions",
+    "LinearSolveResult",
+    "BranchPoint",
+    "BranchResult",
+    "VortexDefect",
+    "HopfChargeOptions",
+    "HopfChargeResult",
+    "Phi4Model",
+    "SineGordonModel",
+    "XYModel",
+    "O3SigmaModel",
+    "BabySkyrmeModel",
+    "DMIType",
+    "MicromagneticModel",
+    "HopfionModel",
+    "HopfionSpec",
+    "LLGDynamics",
     "require_cpp_core",
     "core_info",
     "backend_name",
     "gradient_flow_description",
+    "minimize",
+    "minimize_inplace",
+    "solve",
+    "solve_inplace",
+    "stability_analysis",
+    "gmres",
+    "solve_stationary",
+    "solve_stationary_inplace",
+    "continue_solution",
+    "degree",
+    "detect_defects",
+    "vortex_number",
+    "winding_number",
+    "hopf_charge",
+    "derivative_x",
+    "derivative_y",
+    "derivative_z",
+    "laplacian",
+    "gradient",
+    "curl",
+    "make_hopfion_field",
+    "run_llg",
     "make_field2d",
     "make_uniform_field",
     "make_skyrmion_field",
@@ -1102,6 +1755,7 @@ __all__ = [
     "make_skyrmion_default",
     "make_skyrmion_from_config",
     "field_from_numpy",
+    "field3d_from_numpy",
     "field_to_numpy",
     "field2d_to_numpy",
     "to_numpy",

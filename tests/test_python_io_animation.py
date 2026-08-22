@@ -316,6 +316,7 @@ class FieldIoAnimationTests(unittest.TestCase):
             records = root / "records.csv"
             evolved = root / "evolved.npz"
             dynamics_records = root / "dynamics.csv"
+            micromagnetic = root / "micromagnetic.npz"
             plot = root / "relaxed.png"
 
             self.assertEqual(
@@ -342,6 +343,27 @@ class FieldIoAnimationTests(unittest.TestCase):
                         "--records", str(records),
                         "--dmi", "0.1",
                         "--optimizer", "riemannian",
+                        "--steps", "2",
+                        "--record-every", "1",
+                    ]
+                ),
+                0,
+            )
+
+            self.assertEqual(
+                cli_main(
+                    [
+                        "evolve",
+                        "--model", "micromagnetic",
+                        "--input", str(relaxed),
+                        "--output", str(micromagnetic),
+                        "--exchange", "1.0",
+                        "--dmi", "0.1",
+                        "--dmi-type", "interfacial",
+                        "--anisotropy", "0.1",
+                        "--field-z", "0.05",
+                        "--time-step", "0.0001",
+                        "--damping", "0.2",
                         "--steps", "2",
                         "--record-every", "1",
                     ]
@@ -385,6 +407,7 @@ class FieldIoAnimationTests(unittest.TestCase):
                 records,
                 evolved,
                 dynamics_records,
+                micromagnetic,
                 plot,
             ):
                 self.assertTrue(path.is_file())
@@ -415,6 +438,31 @@ class FieldIoAnimationTests(unittest.TestCase):
             self.assertEqual(loaded.boundary, "periodic")
             self.assertAlmostEqual(loaded.dx, 0.5)
             self.assertAlmostEqual(loaded.dy, 0.75)
+
+    def test_version_two_npz_preserves_uniform_boundary(self) -> None:
+        field = sk.make_uniform_field(4, 5, boundary="neumann")
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "version-two.npz"
+            np.savez(
+                path,
+                field=field.to_numpy(),
+                dx=np.asarray(0.25),
+                dy=np.asarray(0.5),
+                boundary=np.asarray("neumann"),
+                format_version=np.asarray(2),
+                metadata_json=np.asarray('{"source": "v2"}'),
+            )
+
+            loaded, metadata = sk.load_field_npz(path, return_metadata=True)
+
+            self.assertEqual(loaded.boundary, "neumann")
+            self.assertEqual(loaded.boundary_x, "neumann")
+            self.assertEqual(loaded.boundary_y, "neumann")
+            self.assertEqual(metadata, {"source": "v2"})
+            self.assertAlmostEqual(loaded.dx, 0.25)
+            self.assertAlmostEqual(loaded.dy, 0.5)
+            np.testing.assert_allclose(loaded.to_numpy(), field.to_numpy())
 
 
 if __name__ == "__main__":
