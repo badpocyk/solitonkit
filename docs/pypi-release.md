@@ -42,7 +42,7 @@ Manual runs never execute the PyPI publish job.
 2. Update the fallback `__version__` in `python/solitonkit/__init__.py` if the
    source-tree fallback should change.
 3. Commit and merge the version change.
-4. Create a tag matching the version, conventionally `v0.1.0`.
+4. Create a tag matching the version, conventionally `v0.2.0`.
 5. Create and publish a GitHub Release from that tag.
 
 The workflow verifies that the release tag matches `project.version`, builds

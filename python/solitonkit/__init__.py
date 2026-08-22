@@ -15,7 +15,7 @@ from importlib.metadata import version as package_version
 try:
     __version__ = package_version("solitonkit")
 except PackageNotFoundError:
-    __version__ = "0.1.0"
+    __version__ = "0.2.0"
 
 
 # ---------------------------------------------------------------------
