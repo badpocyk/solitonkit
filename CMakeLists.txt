@@ -153,6 +153,16 @@ if(SOLITONKIT_BUILD_PYTHON)
     endif()
 
     if(SOLITONKIT_BUILD_TESTS)
+        if(WIN32)
+            set(SOLITONKIT_TEST_PYTHONPATH
+                "${CMAKE_CURRENT_SOURCE_DIR}/python\\;$ENV{PYTHONPATH}"
+            )
+        else()
+            set(SOLITONKIT_TEST_PYTHONPATH
+                "${CMAKE_CURRENT_SOURCE_DIR}/python:$ENV{PYTHONPATH}"
+            )
+        endif()
+
         add_test(
             NAME test_python_io_animation
             COMMAND
@@ -165,7 +175,22 @@ if(SOLITONKIT_BUILD_PYTHON)
             test_python_io_animation
             PROPERTIES
                 ENVIRONMENT
-                    "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/python;MPLBACKEND=Agg"
+                    "PYTHONPATH=${SOLITONKIT_TEST_PYTHONPATH};MPLBACKEND=Agg"
+        )
+
+        add_test(
+            NAME test_extended_python
+            COMMAND
+                "${Python3_EXECUTABLE}"
+                "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_extended_python.py"
+                -v
+        )
+
+        set_tests_properties(
+            test_extended_python
+            PROPERTIES
+                ENVIRONMENT
+                    "PYTHONPATH=${SOLITONKIT_TEST_PYTHONPATH};MPLBACKEND=Agg"
         )
     endif()
 endif()

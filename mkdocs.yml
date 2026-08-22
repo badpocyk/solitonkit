@@ -1,5 +1,5 @@
 site_name: solitonkit
-site_description: C++/Python toolkit for O(3) solitons and baby Skyrmions
+site_description: C++/Python toolkit for nonlinear fields, Skyrmions, micromagnetics, and Hopfions
 repo_url: https://github.com/badpocyk/solitonkit
 
 theme:
@@ -9,6 +9,10 @@ nav:
   - Home: index.md
   - Quickstart: quickstart.md
   - Theory: theory.md
+  - Models and Solvers: models-solvers.md
+  - Linear Stability: stability-analysis.md
+  - Research Workflows: research-workflows.md
+  - 3D and Hopfions: three-dimensional.md
   - Python API: python-api.md
   - CLI: cli.md
   - PyPI Release: pypi-release.md

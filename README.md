@@ -1,16 +1,28 @@
 # solitonkit
 
 `solitonkit` is a C++/Python toolkit for simulating, relaxing, analyzing, and
-visualizing two-dimensional topological solitons: O(3) sigma-model fields,
-baby Skyrmions, Dzyaloshinskii-Moriya interaction terms, gradient flows, and
-Landau-Lifshitz-type dynamics.
+visualizing topological and nonlinear fields in two and three dimensions:
+O(3), XY, phi4, Sine-Gordon, baby Skyrme, micromagnetic, and Faddeev-Skyrme
+Hopfion models.
 
 
 ![Skyrmion diagnostics](https://raw.githubusercontent.com/badpocyk/solitonkit/main/docs/assets/skyrmion_diagnostics.png)
 
 ## Highlights
 
-- C++ core for `Vec3`, `Lattice2D`, `O3Field`, observables, flows, and models.
+- Header-only C++17 core for scalar, XY, and O(3) fields on 2D/3D lattices.
+- Axis-specific periodic, fixed, Neumann, and Dirichlet boundaries.
+- Shared finite-difference gradient, Laplacian, divergence, and curl operators.
+- Common `Model` contract with generic `minimize()` and `solve()` entry points.
+- Matrix-free Hessian-vector products and low-mode linear stability analysis.
+- Restarted right-preconditioned GMRES and damped Newton-Krylov stationary
+  solves with line search and trust-radius control.
+- Adaptive pseudo-arclength continuation with stability tracking and
+  bifurcation-candidate detection.
+- Geometric degree, XY vortex detection, and a numerical 3D Hopf invariant.
+- Parallel parameter sweeps, phase-diagram helpers, versioned HDF5
+  checkpoints, and a reproducible benchmark runner.
+- XY, phi4, Sine-Gordon, O(3), Baby Skyrme, micromagnetic, and Hopfion models.
 - Python API for field generation, relaxation, dynamics, visualization, I/O,
   and dataset generation.
 - Baby Skyrme energy decomposed into `sigma`, `skyrme`, `potential`, `dmi`,
@@ -22,8 +34,9 @@ Landau-Lifshitz-type dynamics.
   - Barzilai-Borwein gradient method,
   - L-BFGS,
   - semi-implicit flow.
-- Landau-Lifshitz evolution with optional damping.
-- Export to PNG, GIF, MP4, CSV, and NPZ.
+- Full exchange/DMI/anisotropy/Zeeman micromagnetics and Heun LLG dynamics.
+- 3D O(3) fields, rational-map Hopfion initial data, and Faddeev-Skyrme energy.
+- Export to PNG, GIF, MP4, CSV, NPZ, and HDF5.
 
 ![Gradient-flow animation](https://raw.githubusercontent.com/badpocyk/solitonkit/main/docs/assets/gradient_flow.gif)
 
@@ -90,9 +103,75 @@ sk.save_field_npz(relaxed, "relaxed.npz")
 sk.save_skyrmion_diagnostics(relaxed, "relaxed.png", spacing=0.25)
 ```
 
+The common model API also works across field types:
+
+```python
+phi = sk.ScalarField2D(
+    96,
+    64,
+    value=1.0,
+    dirichlet_value=1.0,
+    boundary_x="dirichlet",
+    boundary_y="dirichlet",
+)
+phi.set(48, 32, 0.0)
+
+model = sk.Phi4Model(lambda_=1.0, vacuum=1.0)
+relaxed_phi, records = sk.minimize(phi, model, max_steps=200)
+
+stability = sk.stability_analysis(relaxed_phi, model, modes=8)
+print(stability.eigenvalues, stability.stable)
+sk.plot_eigenmode(stability, index=0)
+```
+
+For stationary branches and research sweeps, use the matrix-free
+Newton-Krylov and continuation APIs:
+
+```python
+stationary, newton_history = sk.solve_stationary(
+    phi,
+    model,
+    tolerance=1e-9,
+)
+
+branch = sk.continue_solution(
+    stationary,
+    lambda vacuum: sk.Phi4Model(lambda_=1.0, vacuum=vacuum),
+    start=1.0,
+    stop=1.5,
+    step=0.05,
+    parameter_name="vacuum",
+)
+
+print(branch.lowest_eigenvalues)
+print(branch.bifurcation_candidates)
+sk.save_run(branch, "phi4-branch.h5", metadata={"model": "phi4"})
+```
+
+The corrector uses an augmented pseudo-arclength equation, so it can continue
+through folds where the physical parameter is not single-valued. O(3) steps
+remain on the sphere through tangent projection and exponential-map
+retraction.
+
+Topology and phase-diagram helpers are available at the same level:
+
+```python
+print(sk.degree(skyrmion))
+print(sk.detect_defects(xy_field))
+print(sk.hopf_charge(hopfion, return_diagnostics=True).charge)
+
+diagram = sk.phase_diagram(
+    initial_field,
+    lambda exchange, dmi: sk.MicromagneticModel(exchange=exchange, dmi=dmi),
+    {"exchange": [0.8, 1.0, 1.2], "dmi": [0.0, 0.1, 0.2]},
+    workers=4,
+)
+diagram.plot()
+```
+
 ## Boundary Conditions
 
-`solitonkit` supports four boundary modes:
+`solitonkit` supports four boundary modes independently on each axis:
 
 | Boundary | Meaning | Typical use |
 | --- | --- | --- |
@@ -105,6 +184,9 @@ sk.save_skyrmion_diagnostics(relaxed, "relaxed.png", spacing=0.25)
 
 For a single Skyrmion, `dirichlet` is usually the physically cleaner finite-grid
 choice because the boundary represents the vacuum at infinity.
+
+Use `O3Field.with_boundaries(...)` or the `boundary_x`, `boundary_y` constructor
+arguments of scalar/XY fields for mixed boundaries.
 
 ## Baby Skyrme Model
 
@@ -156,7 +238,9 @@ The package exposes a `solitonkit` command:
 solitonkit generate --nx 128 --ny 128 --spacing 0.25 --boundary dirichlet --output field.npz
 solitonkit relax --input field.npz --output relaxed.npz --optimizer lbfgs --steps 200
 solitonkit evolve --input relaxed.npz --output evolved.npz --steps 100 --damping 0.3
+solitonkit evolve --model micromagnetic --input relaxed.npz --output llg.npz --dmi-type interfacial --damping 0.2
 solitonkit plot --input relaxed.npz --output relaxed.png
+solitonkit benchmark --sizes 32 64 128 --repeats 5
 ```
 
 Available Baby Skyrme relaxers:
@@ -174,6 +258,10 @@ solitonkit relax --optimizer semi-implicit
 - [Documentation index](docs/index.md)
 - [Quickstart guide](docs/quickstart.md)
 - [Theory notes](docs/theory.md)
+- [Models, boundaries, and solvers](docs/models-solvers.md)
+- [Linear stability analysis](docs/stability-analysis.md)
+- [Stationary solvers and research workflows](docs/research-workflows.md)
+- [3D fields and Hopfions](docs/three-dimensional.md)
 - [Python API overview](docs/python-api.md)
 - [CLI guide](docs/cli.md)
 - [Publishing to PyPI](docs/pypi-release.md)
@@ -193,6 +281,7 @@ Run the Python integration tests after building the extension:
 
 ```powershell
 python tests/test_python_io_animation.py -v
+python tests/test_extended_python.py -v
 ```
 
 Regenerate documentation screenshots, GIFs, and the demo notebook:

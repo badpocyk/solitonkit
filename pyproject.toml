@@ -8,7 +8,7 @@ build-backend = "scikit_build_core.build"
 [project]
 name = "solitonkit"
 version = "0.1.0"
-description = "C++/Python toolkit for O(3) solitons and baby Skyrmions"
+description = "C++/Python toolkit for nonlinear fields, Skyrmions, micromagnetics, and Hopfions"
 readme = "README.md"
 requires-python = ">=3.9"
 authors = [
@@ -18,6 +18,10 @@ keywords = [
     "baby-skyrme",
     "computational-physics",
     "o3-sigma-model",
+    "xy-model",
+    "sine-gordon",
+    "micromagnetics",
+    "hopfion",
     "scientific-computing",
     "skyrmion",
     "soliton",
@@ -35,6 +39,7 @@ dependencies = [
     "numpy",
     "matplotlib",
     "pillow",
+    "h5py>=3.10",
 ]
 
 [project.optional-dependencies]

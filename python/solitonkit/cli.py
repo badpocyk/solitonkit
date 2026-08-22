@@ -5,6 +5,9 @@ from pathlib import Path
 from typing import Sequence
 
 from .core import (
+    DMIType,
+    MicromagneticModel,
+    Vec3,
     baby_skyrme_energy,
     make_skyrmion_field,
     run_baby_skyrme_barzilai_borwein,
@@ -14,6 +17,7 @@ from .core import (
     run_baby_skyrme_semi_implicit_flow,
     run_gradient_flow,
     run_landau_lifshitz,
+    run_llg,
     topological_charge,
     total_energy,
 )
@@ -195,25 +199,55 @@ def _command_evolve(args: Namespace) -> int:
         return_metadata=True,
     )
 
-    evolved, records = run_landau_lifshitz(
-        field,
-        kappa=args.kappa,
-        mass=args.mass,
-        time_step=args.time_step,
-        damping=args.damping,
-        steps=args.steps,
-        record_every=args.record_every,
-        dmi=args.dmi,
-    )
+    if args.model == "micromagnetic":
+        dmi_type = {
+            "none": DMIType.None_,
+            "bulk": DMIType.Bulk,
+            "interfacial": DMIType.Interfacial,
+        }[args.dmi_type]
+        model = MicromagneticModel(
+            exchange=args.exchange,
+            dmi=args.dmi,
+            anisotropy=args.anisotropy,
+            applied_field=Vec3(args.field_x, args.field_y, args.field_z),
+            easy_axis=Vec3(args.easy_axis_x, args.easy_axis_y, args.easy_axis_z),
+            dmi_type=dmi_type,
+        )
+        evolved, records = run_llg(
+            field,
+            model,
+            time_step=args.time_step,
+            damping=args.damping,
+            gyromagnetic_ratio=args.gyromagnetic_ratio,
+            steps=args.steps,
+            record_every=args.record_every,
+        )
+    else:
+        evolved, records = run_landau_lifshitz(
+            field,
+            kappa=args.kappa,
+            mass=args.mass,
+            time_step=args.time_step,
+            damping=args.damping,
+            steps=args.steps,
+            record_every=args.record_every,
+            dmi=args.dmi,
+        )
 
     metadata = dict(input_metadata)
     metadata["dynamics"] = {
-        "model": "landau-lifshitz",
+        "model": args.model,
         "kappa": args.kappa,
         "mass": args.mass,
+        "exchange": args.exchange,
+        "anisotropy": args.anisotropy,
+        "dmi_type": args.dmi_type,
+        "applied_field": [args.field_x, args.field_y, args.field_z],
+        "easy_axis": [args.easy_axis_x, args.easy_axis_y, args.easy_axis_z],
         "dmi": args.dmi,
         "time_step": args.time_step,
         "damping": args.damping,
+        "gyromagnetic_ratio": args.gyromagnetic_ratio,
         "steps": args.steps,
         "record_every": args.record_every,
     }
@@ -228,6 +262,18 @@ def _command_evolve(args: Namespace) -> int:
     print(f"final energy: {records[-1].energy:.12g}")
     print(f"final topological charge: {records[-1].topological_charge:.12g}")
 
+    return 0
+
+
+def _command_benchmark(args: Namespace) -> int:
+    from .benchmarks import run_benchmarks
+
+    result = run_benchmarks(
+        sizes=args.sizes,
+        repeats=args.repeats,
+        include_stability=args.stability,
+    )
+    print(result.format_table())
     return 0
 
 
@@ -290,11 +336,30 @@ def build_parser() -> ArgumentParser:
     evolve.add_argument("--input", type=Path, required=True)
     evolve.add_argument("--output", type=Path, required=True)
     evolve.add_argument("--records", type=Path)
+    evolve.add_argument(
+        "--model",
+        choices=("baby-skyrme", "micromagnetic"),
+        default="baby-skyrme",
+    )
     evolve.add_argument("--kappa", type=float, default=1.0)
     evolve.add_argument("--mass", type=float, default=1.0)
+    evolve.add_argument("--exchange", type=float, default=1.0)
+    evolve.add_argument("--anisotropy", type=float, default=0.0)
     evolve.add_argument("--dmi", type=float, default=0.0)
+    evolve.add_argument(
+        "--dmi-type",
+        choices=("none", "bulk", "interfacial"),
+        default="bulk",
+    )
+    evolve.add_argument("--field-x", type=float, default=0.0)
+    evolve.add_argument("--field-y", type=float, default=0.0)
+    evolve.add_argument("--field-z", type=float, default=0.0)
+    evolve.add_argument("--easy-axis-x", type=float, default=0.0)
+    evolve.add_argument("--easy-axis-y", type=float, default=0.0)
+    evolve.add_argument("--easy-axis-z", type=float, default=1.0)
     evolve.add_argument("--time-step", type=float, default=1e-5)
     evolve.add_argument("--damping", type=float, default=0.0)
+    evolve.add_argument("--gyromagnetic-ratio", type=float, default=1.0)
     evolve.add_argument("--steps", type=int, default=1000)
     evolve.add_argument("--record-every", type=int, default=10)
     evolve.set_defaults(handler=_command_evolve)
@@ -311,6 +376,14 @@ def build_parser() -> ArgumentParser:
     plot.add_argument("--no-quiver", action="store_true")
     plot.add_argument("--dpi", type=int, default=160)
     plot.set_defaults(handler=_command_plot)
+
+    benchmark = subparsers.add_parser(
+        "benchmark", help="benchmark core numerical kernels"
+    )
+    benchmark.add_argument("--sizes", type=int, nargs="+", default=[32, 64, 128])
+    benchmark.add_argument("--repeats", type=int, default=3)
+    benchmark.add_argument("--stability", action="store_true")
+    benchmark.set_defaults(handler=_command_benchmark)
 
     return parser
 

@@ -2,9 +2,13 @@
 
 #include <cstddef>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 #include "solitonkit/core/O3Field.hpp"
 #include "solitonkit/core/Vec3.hpp"
+#include "solitonkit/models/Model.hpp"
+#include "solitonkit/operators/DifferentialOperators.hpp"
 
 namespace solitonkit {
 
@@ -19,7 +23,7 @@ namespace solitonkit {
         }
     };
 
-    class BabySkyrmeModel {
+    class BabySkyrmeModel : public DifferentiableModel<O3Field, Vec3> {
     public:
         BabySkyrmeModel(
             double kappa = 1.0,
@@ -49,17 +53,16 @@ namespace solitonkit {
             return dmi_;
         }
 
+        std::string name() const override { return "baby-skyrme"; }
+        std::size_t dimensions() const override { return 2; }
+        FieldKind field_kind() const override { return FieldKind::O3_2D; }
+
         static Vec3 derivative_x(
             const O3Field& field,
             std::size_t i,
             std::size_t j
         ) {
-            const auto& lat = field.lattice();
-
-            const std::size_t il = lat.left(i);
-            const std::size_t ir = lat.right(i);
-
-            return (field(ir, j) - field(il, j)) / (2.0 * lat.dx());
+            return differential::derivative_x(field, i, j);
         }
 
         static Vec3 derivative_y(
@@ -67,12 +70,7 @@ namespace solitonkit {
             std::size_t i,
             std::size_t j
         ) {
-            const auto& lat = field.lattice();
-
-            const std::size_t jd = lat.down(j);
-            const std::size_t ju = lat.up(j);
-
-            return (field(i, ju) - field(i, jd)) / (2.0 * lat.dy());
+            return differential::derivative_y(field, i, j);
         }
 
         static Vec3 curl(
@@ -163,8 +161,65 @@ namespace solitonkit {
             return { sigma, skyrme, potential, dmi };
         }
 
-        double energy(const O3Field& field) const {
+        double energy(const O3Field& field) const override {
             return energy_terms(field).total();
+        }
+
+        Vec3 skyrme_flux_x_at(
+            const O3Field& field,
+            std::size_t i,
+            std::size_t j
+        ) const {
+            const Vec3 dx = derivative_x(field, i, j);
+            const Vec3 dy = derivative_y(field, i, j);
+            return kappa_ * cross(dy, cross(dx, dy));
+        }
+
+        Vec3 skyrme_flux_y_at(
+            const O3Field& field,
+            std::size_t i,
+            std::size_t j
+        ) const {
+            const Vec3 dx = derivative_x(field, i, j);
+            const Vec3 dy = derivative_y(field, i, j);
+            return kappa_ * cross(cross(dx, dy), dx);
+        }
+
+        Vec3 negative_gradient_at(
+            const O3Field& field,
+            std::size_t i,
+            std::size_t j
+        ) const {
+            const auto& lattice = field.lattice();
+            const Vec3 sigma = differential::laplacian(field, i, j);
+            const Vec3 skyrme_x = (
+                skyrme_flux_x_at(field, lattice.right(i), j)
+                - skyrme_flux_x_at(field, lattice.left(i), j)
+            ) / (2.0 * lattice.dx());
+            const Vec3 skyrme_y = (
+                skyrme_flux_y_at(field, i, lattice.up(j))
+                - skyrme_flux_y_at(field, i, lattice.down(j))
+            ) / (2.0 * lattice.dy());
+            const Vec3 dmi_force = -2.0 * dmi_ * curl(field, i, j);
+            const Vec3 potential_force{ 0.0, 0.0, mass_ * mass_ };
+            return sigma + skyrme_x + skyrme_y
+                + dmi_force + potential_force;
+        }
+
+        std::vector<Vec3> negative_gradient(
+            const O3Field& field
+        ) const override {
+            const auto& lattice = field.lattice();
+            std::vector<Vec3> result(field.size());
+            for (std::size_t j = 0; j < lattice.ny(); ++j) {
+                for (std::size_t i = 0; i < lattice.nx(); ++i) {
+                    if (!lattice.is_fixed_boundary(i, j)) {
+                        result[lattice.index(i, j)] =
+                            negative_gradient_at(field, i, j);
+                    }
+                }
+            }
+            return result;
         }
 
     private:

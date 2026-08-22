@@ -48,3 +48,6 @@ outputs/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Local Codex/project context (never commit)
+/AGENTS.md

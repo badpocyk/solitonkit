@@ -9,6 +9,7 @@
 #include "solitonkit/core/Vec3.hpp"
 #include "solitonkit/models/O3SigmaModel.hpp"
 #include "solitonkit/observables/TopologicalCharge.hpp"
+#include "solitonkit/operators/DifferentialOperators.hpp"
 
 namespace solitonkit {
 
@@ -48,24 +49,7 @@ namespace solitonkit {
             std::size_t i,
             std::size_t j
         ) {
-            const auto& lat = field.lattice();
-
-            const std::size_t il = lat.left(i);
-            const std::size_t ir = lat.right(i);
-            const std::size_t jd = lat.down(j);
-            const std::size_t ju = lat.up(j);
-
-            const Vec3 phi = field(i, j);
-
-            const Vec3 lap_x =
-                (field(ir, j) - 2.0 * phi + field(il, j))
-                / (lat.dx() * lat.dx());
-
-            const Vec3 lap_y =
-                (field(i, ju) - 2.0 * phi + field(i, jd))
-                / (lat.dy() * lat.dy());
-
-            return lap_x + lap_y;
+            return differential::laplacian(field, i, j);
         }
 
         static Vec3 project_to_tangent(
